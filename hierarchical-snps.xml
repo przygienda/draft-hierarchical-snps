@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<!-- This template is for creating an Internet Draft using xml2rfc,
+    which is available here: http://xml.resource.org. -->
+
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+        <!ENTITY RFC2119 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml">
+        <!ENTITY RFC2629 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2629.xml">
+        <!ENTITY RFC3032 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3032.xml">
+        <!ENTITY RFC3277 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3277.xml">
+        <!ENTITY RFC3719 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3719.xml">
+        <!ENTITY RFC4271 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.4271.xml">
+        <!ENTITY RFC5120 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5120.xml">
+        <!ENTITY RFC5301 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5301.xml">
+        <!ENTITY RFC5303 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5303.xml">
+        <!ENTITY RFC5305 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5305.xml">
+        <!ENTITY RFC5308 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5308.xml">
+        <!ENTITY RFC5309 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5309.xml">
+        <!ENTITY RFC5311 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5311.xml">
+        <!ENTITY RFC5316 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5316.xml">
+        <!ENTITY RFC5440 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5440.xml">
+        <!ENTITY RFC5449 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5449.xml">
+        <!ENTITY RFC5614 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5614.xml">
+        <!ENTITY RFC5837 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5837.xml">
+        <!ENTITY RFC5820 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5820.xml">
+        <!ENTITY RFC6232 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.6232.xml">
+        <!ENTITY RFC7356 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7356.xml">
+        <!ENTITY RFC7921 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7921.xml">
+        <!ENTITY RFC8174 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.8174.xml">
+        <!ENTITY RFC8126 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.8126.xml">
+        <!ENTITY RFC8296 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.8296.xml">
+        ]>
+
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<?rfc strict="yes" ?>
+<?rfc toc="yes"?>
+<?rfc tocdepth="4"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes" ?>
+<?rfc compact="yes" ?>
+<?rfc subcompact="no" ?>
+<rfc category="exp" docName="draft-prz-lsr-hierarchical-snps" ipr="trust200902">
+
+    <!-- ***** FRONT MATTER ***** -->
+
+    <front>
+
+        <title>ISIS Hierarchical SNPs</title>
+
+        <author initials='T.' surname='Przygienda' fullname='Tony Przygienda'>
+            <organization>Juniper Networks</organization>
+            <address>
+                <email>prz@juniper.net</email>
+            </address>
+        </author>
+
+        <author initials='T.' surname='Li' fullname='Tony Li'>
+            <organization>Juniper Networks</organization>
+            <address>
+                <email>tli@juniper.net</email>
+            </address>
+        </author>
+
+
+
+        <date/>
+
+        <abstract>
+            <t>
+                The document introduces an optional, new type of SNPs that can compress the traditional CSNPs
+                during stable network conditions allowing to support larger databases and adjacency numbers.
+            </t>
+
+
+        </abstract>
+
+    </front>
+
+    <middle>
+
+        <section title="Introduction">
+
+            <t>TBD</t>
+
+
+        </section>
+
+
+
+
+        <section title="Security Considerations" toc="default">
+
+            <t>TBD
+            </t>
+
+        </section> <!-- end of security considerations -->
+
+        <section anchor="IGP_IANA" title="IANA Section">
+            <t>TBD
+            </t>
+        </section>
+
+        <!-- 2 -->
+        <section title="Contributors" toc="default">
+
+            <t>TBD</t>
+
+        </section> <!-- end of contributors -->
+
+        <!-- 2 -->
+        <section title="Acknowledgement" toc="default">
+
+            <t>TBD</t>
+
+        </section> <!-- end of contributors -->
+
+    </middle>
+
+    <back>
+
+        <references title="Normative References">
+
+            <!-- &RFC3032;
+            &RFC8296;
+            -->
+
+
+
+        </references> <!-- end of normative references -->
+
+        <references title="Informative References">
+
+
+        </references> <!-- end of informative references -->
+
+    </back>
+
+</rfc>
