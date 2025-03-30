@@ -61,13 +61,16 @@
         </author>
 
 
-
         <date/>
 
         <abstract>
             <t>
-                The document introduces an optional, new type of SNPs that can compress the traditional CSNPs
-                during stable network conditions allowing to support larger databases and adjacency numbers.
+                The document introduces an optional, new type of SNPs called Hierarchical SNP (HSNP) that can
+                compress the traditional CSNPs
+                during stable network conditions into a variant of merkle tree, hence
+                allowing to support very large databases and adjacency numbers due to vastly reduced size of CSNP
+                exchanges. Such an approach leads also in case of inconsistencies to much faster re-synchronization
+                since only a subset of CSNPs is necessary to correct the entropy present.
             </t>
 
 
@@ -79,13 +82,137 @@
 
         <section title="Introduction">
 
-            <t>TBD</t>
+            <t>The document introduces an optional, new type of SNPs called Hierarchical SNP (HSNP) that can
+                compress the traditional CSNPs
+                during stable network conditions into a variant of merkle tree, hence
+                allowing to support very large databases and adjacency numbers due to vastly reduced size of CSNP
+                exchanges. Such an approach leads also in case of inconsistencies to much faster re-synchronization
+                since only a subset of CSNPs is necessary to correct the entropy present.
+            </t>
 
+            <t>
+                Although the scheme can be applied recursively to the point where a single merkle hash represents
+                the whole database, for practical purposes a two level tree allows compression for LSDB sizes
+                of the 1E5 order and hence the document limits itself in examples to such magnitudes. Further
+                considerations
+                mentioned in
+                <xref target="further"/>
+                seem to make this limit practically prudent.
+            </t>
+
+            <t>
+                We call
+                CSNP entries of LSPs the first level merkle hash (where we basically use lsp id, seq# and checksum
+                as "hash") and the hash summarizing a set of those second level merkle hash and so on.
+
+            </t>
 
         </section>
 
 
+        <section title="Dynamic Leaf Partitioning">
 
+            <t>
+                Practically speaking, the most interesting problem is the correct subdivision of the database into
+                first level collection of leaf nodes (CSNP entries) that on one hand do provide a good compression,
+                on the other hand the subdivision cannot change too often, otherwise the neighbor receiving the
+                information
+                may have to recompute the hashes rather than relying on a cache representing its own merkle tree.
+            </t>
+
+            <t>A first example will serve well here. We limit ourselves in the examples to consideration of a
+                LSDB with 64 nodes with system identifiers of 1000.0000.00&lt;node-id&gt; and 128 fragments 0 to 32.
+                We leave the uneven node identifiers out to have some "holes" in the numbering to hit some corner
+                cases in examples.
+                We disregard the pseudo node byte as simply another byte of system identifier since it does not
+                contribute
+                further details to the scheme.
+
+            </t>
+
+            <t>
+                Each of such fragments when advertised as CSNP entry consumes LSP ID + Fragment + Seq# + CSUM + Lifetime
+                length which
+                amounts to 8 + 2 + 2 + 2 = 14 bytes. We can fit into the prevailing 1500 bytes somewhat less than 100 of
+                such entries. Since it is desirable to produce one packet on a miss on the merkle hash of first level
+                leaf
+                the examples will focus, which tactically is also an implementation guidance, on leaves containing
+                around 80
+                fragments with some exceptions. Why we do not try to maximize the "packing" since LSDB may grow and to
+                maximize the chances of "leaf packing" on both sides of an adjacency and hence use of hashes some
+                "slack"
+                is advisable.
+            </t>
+
+            <t>
+                The packing will always put all fragments of a system into same leaf (which of course can exceed
+                the advisable 80 fragments sometimes) and a leaf will be split into two 2nd order leaves once
+                the 80 fragments are exceeded otherwise. Once two 2nd order leaves can be merged into one
+                leaf with less than 80 fragments they will be. The CSNP entries (or equivalently, we can just
+                talk about fragments) are sorted on their usual &lt;system-id.fragment&gt; numbering.
+            </t>
+
+
+            <t>
+
+            </t>
+
+        </section>
+
+        <section title="Fast, incremental hashing function">
+            <t>
+                Since we need to generate massive amount of hashes over sets of ever changing fragments it is very
+                desirable to use a specialized hash function that provides means for very fast incremental adjustment
+                of hash result on fragments arriving, aging out or changing their checksums.
+                Also, splitting or merging of leaves should allow to generate 2nd order and above hashes very quickly.
+
+            </t>
+            Deeper considerations on such hashes can be found in
+            <xref target="HASHES"/>
+            but the design space
+            is simplified due to irrelevance of security involved.
+            <t>
+
+            <t>
+                The hash function is a very fast XOR operation
+                which incorporates the numbering of fragments. It
+                is 64 bits long for simplicity. Symbol &lt;&lt; is used for rotation to the left.
+
+            </t>
+            <t>
+                A hash of a first order leave is nothing but (where all used values are converted to 64
+                bit values first with any remaining high order bits zero'ed out)
+                XOR(hash, (system-id-of-fragment + 1) &lt;&lt; fragment#) followed by
+                XOR(hash, (fragment# + 1) &lt;&lt; 32 | (fragment-seq# + 1) &lt;&lt;
+                16 | (fragment-csum + 1)) for all contained fragments .
+                Obviously, such an operation can be easily reversed to yield the previous
+                hash without the fragment which allows for very fast removal, addition of fragments and updates
+                of the relevant fields.
+            </t>
+            <t>
+                A hash of second order leave is nothing but XOR of all the hashes of its contained first order leaves
+                with. Again, this allows to update the hash be adding, removing a leaf or
+                changing its hash
+                in a very fast and simple manner. The same packing logic of keeping 80 first order leaves
+                in a second order leaves applies. This will cause a mismatch in the hash of a 2nd order leaf
+                to advertise roughly a PDU full of first order leaves.
+            </t>
+
+            <t>
+                Ultimately, and fairly obviously, third order hash uses second order hash logic to keep its hash.
+                However, the question remains. This all means that every time a first order leaf changes the
+                contained system IDs for
+                some reason the merkle hashes will have to be readjusted recursively in according 2nd and third
+                order leaves. This is in itself nothing
+                particular since
+                <em>any</em>
+                change on first order leaf hash forces change on second order and consequently third order leaf hash.
+                This is how Merkle
+                trees work after all.
+            </t>
+
+
+        </section>
 
         <section title="Security Considerations" toc="default">
 
@@ -99,6 +226,13 @@
             </t>
         </section>
 
+        <section title="Further Considerations" toc="default" anchor="further">
+
+            <t>Impact of losses</t>
+
+        </section> <!-- end of contributors -->
+
+
         <!-- 2 -->
         <section title="Contributors" toc="default">
 
@@ -109,7 +243,12 @@
         <!-- 2 -->
         <section title="Acknowledgement" toc="default">
 
-            <t>TBD</t>
+            <t>The discussions about "compressing CSNPs" go very long way back, to the times Radia Perlman were
+                allegedly
+                stalking the halls with insomniac Dave Katz. Recent efforts to push the scale of the protocol to new
+                heights
+                made the effort worth the effort (pun intended) to codify it into a working engineering solution.
+            </t>
 
         </section> <!-- end of contributors -->
 
@@ -123,6 +262,26 @@
             &RFC8296;
             -->
 
+            <reference anchor="MERKLE">
+                <front>
+                    <title>A Digital Signature Based on a Conventional Encryption Function</title>
+                    <seriesInfo name="Advances in Cryptology &ndash; CRYPTO '87" value=""/>
+                    <author initials="R.C." surname="Merkle">
+                    </author>
+                    <date year="1988"/>
+                </front>
+            </reference>
+
+
+            <reference anchor="HASHES">
+                <front>
+                    <title>Security considerations for incremental hash functions based on pair block chaining</title>
+                    <seriesInfo name="Computers and Security 25" value=""/>
+                    <author initials="C.-W." surname="Phan">
+                    </author>
+                    <date year="2006"/>
+                </front>
+            </reference>
 
 
         </references> <!-- end of normative references -->
