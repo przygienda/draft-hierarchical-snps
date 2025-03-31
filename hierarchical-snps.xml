@@ -66,10 +66,9 @@
         <abstract>
             <t>
                 The document introduces an optional, new type of SNPs called Hierarchical SNP (HSNP) that can
-                compress the traditional CSNPs
-                during stable network conditions into a variant of merkle tree, hence
+                compress the traditional CSNPs into a variant of merkle tree, hence
                 allowing to support very large databases and adjacency numbers due to vastly reduced size of CSNP
-                exchanges. Such an approach leads also in case of inconsistencies to much faster re-synchronization
+                exchanges. Such an approach should lead in case of inconsistencies to much faster re-synchronization
                 since only a subset of CSNPs is necessary to correct the entropy present.
             </t>
 
@@ -84,9 +83,9 @@
 
             <t>The document introduces an optional, new type of SNPs called Hierarchical SNP (HSNP) that can
                 compress the traditional CSNPs
-                during stable network conditions into a variant of merkle tree, hence
+                into a variant of merkle tree <xref target="MERKLE"/>, hence
                 allowing to support very large databases and adjacency numbers due to vastly reduced size of CSNP
-                exchanges. Such an approach leads also in case of inconsistencies to much faster re-synchronization
+                exchanges. Such an approach should lead in case of inconsistencies to much faster re-synchronization
                 since only a subset of CSNPs is necessary to correct the entropy present.
             </t>
 
@@ -102,8 +101,8 @@
 
             <t>
                 We call
-                CSNP entries of LSPs the first level merkle hash (where we basically use lsp id, seq# and checksum
-                as "hash") and the hash summarizing a set of those second level merkle hash and so on.
+                CSNP entries of LSPs the zero level merkle hash (where we basically use lsp id, seq# and checksum
+                as "hash") and the hash summarizing a set of those first level merkle hash and so on recursively.
 
             </t>
 
@@ -115,92 +114,153 @@
             <t>
                 Practically speaking, the most interesting problem is the correct subdivision of the database into
                 first level collection of leaf nodes (CSNP entries) that on one hand do provide a good compression,
-                on the other hand the subdivision cannot change too often, otherwise the neighbor receiving the
+                on the other hand the subdivision should only change when necessary, otherwise the neighbor receiving the
                 information
                 may have to recompute the hashes rather than relying on a cache representing its own merkle tree.
             </t>
 
-            <t>A first example will serve well here. We limit ourselves in the examples to consideration of a
-                LSDB with 64 nodes with system identifiers of 1000.0000.00&lt;node-id&gt; and 128 fragments 0 to 32.
-                We leave the uneven node identifiers out to have some "holes" in the numbering to hit some corner
-                cases in examples.
-                We disregard the pseudo node byte as simply another byte of system identifier since it does not
-                contribute
-                further details to the scheme.
-
-            </t>
-
             <t>
-                Each of such fragments when advertised as CSNP entry consumes LSP ID + Fragment + Seq# + CSUM + Lifetime
+                Each of CSNP entries consumes LSP ID + Fragment + Seq# + CSUM + Lifetime
                 length which
                 amounts to 8 + 2 + 2 + 2 = 14 bytes. We can fit into the prevailing 1500 bytes somewhat less than 100 of
                 such entries. Since it is desirable to produce one packet on a miss on the merkle hash of first level
-                leaf
-                the examples will focus, which tactically is also an implementation guidance, on leaves containing
-                around 80
-                fragments with some exceptions. Why we do not try to maximize the "packing" since LSDB may grow and to
-                maximize the chances of "leaf packing" on both sides of an adjacency and hence use of hashes some
+                leaf, such leaves will be standardized to pack 80
+                LSP fragments with exceptions following later. We do not try to maximize the "packing" since LSDB may grow and to
+                maximize the chances of same "leaf packing" on both sides
+                of an adjacency, even during flooding transitions,  and hence use of hashes some
                 "slack"
                 is advisable.
             </t>
 
             <t>
-                The packing will always put all fragments of a system into same leaf (which of course can exceed
-                the advisable 80 fragments sometimes) and a leaf will be split into two 2nd order leaves once
-                the 80 fragments are exceeded otherwise. Once two 2nd order leaves can be merged into one
-                leaf with less than 80 fragments they will be. The CSNP entries (or equivalently, we can just
-                talk about fragments) are sorted on their usual &lt;system-id.fragment&gt; numbering.
+                The initial packing will always put all fragments of a system into same leaf (which of course can exceed
+                the advisable 80 fragments sometimes) and a first order leaf will be considered "full" if addition
+                of next System ID fragments would exceed this size (except obviously, when the leaf is empty).
             </t>
 
 
-            <t>
+            <section title="Repacking">
+                <t>
+                    It is beneficial for efficient implementation using caching to agree on both sides
+                    on the ranges of the Merkle hashes advertised. However, since the nodes will always
+                    agree on the "system-ID" boundary, a merkle hash per system ID can be  easily kept
+                    and if the received ranges do not agree with cached
+                    ranges the necessary merkle hash recomputed very quickly. As example,
+                    in first level the worst case of 2 leaves
+                    containing ~80 nodes and "intersecting" the cached internal ranges an implementation
+                    will have to merkle hash about 160 hashes (one per System ID) to validate the received value.
+                </t>
 
-            </t>
+                <t>Obviously, it is still highly preferred for the ranges on advertised merkle hashes
+                to agree on their system ID ranges and it is of most importance at the top level
+                since under stable conditions those are the merkle hashes exchanged and basically
+                reducing the CSNP exchange to minimal amount of packets and processing. </t>
+
+                <t>
+                    To settle on the same ranges in HSNPs an implementation SHOULD let a
+                    leaf that
+                    drops under 50% occupancy "start robbing" system IDs from "left" of the next leaf until the current
+                    leaf meets the "full condition". This is of course a recursive action that may ultimately generate
+                    less leaves, remove some and in a recursive fashion lead to the same "greedy robbery from the left"
+                    in the next level up. The "left" is colloquial here for starting with lowest System IDs under
+                    normal sorting criteria.
+                    On the other end of the spectrum a leaf that holds more than 150% of usual capacity (i.e. 80 * 1.5 LSPs)
+                    SHOULD be split into two leaves unless it holds a single System ID with more than 80 fragments.
+                    Splitting the leaves may cause a repacking at a higher
+                    level again in a recursive fashion.
+
+                </t>
+
+                <t>
+                    The rebalancing of ranges to agree across all nodes and hence reduce hashing load
+                    is a trade-off in terms of possibly large recomputation vs. suffering a penalty of
+                    recomputing some hashes on disagreeing ranges on every exchange. Other solutions are
+                    of course possible such as internal caches that keep the recomputed hashes for the
+                    neighbor's ranges.
+                </t>
+
+                <t>
+                    TBD: precise splitting/merging algorithms so nodes end up on precisely same ranges with
+                    highest possible likelihood. A possibly
+                    simpler idea to discuss is to simply "repack" the whole thing on some balance violations or
+                    periodically.
+                </t>
+
+            </section>
 
         </section>
 
         <section title="Fast, incremental hashing function">
             <t>
-                Since we need to generate massive amount of hashes over sets of ever changing fragments it is very
+                Since we need to generate massive amount of hashes over sets of ever-changing fragments it is very
                 desirable to use a specialized hash function that provides means for very fast incremental adjustment
                 of hash result on fragments arriving, aging out or changing their checksums.
-                Also, splitting or merging of leaves should allow to generate 2nd order and above hashes very quickly.
-
+                Also, splitting or merging of leaves should allow to generate first and higher order hashes very quickly.
             </t>
+
+            <t>
             Deeper considerations on such hashes can be found in
             <xref target="HASHES"/>
-            but the design space
+            but our design space
             is simplified due to irrelevance of security involved.
+            </t>
+
             <t>
+                We use a large prime number constant to prime all hashes.
+            </t>
 
             <t>
                 The hash function is a very fast XOR operation
-                which incorporates the numbering of fragments. It
-                is 64 bits long for simplicity. Symbol &lt;&lt; is used for rotation to the left.
+                which incorporates the system IDs, checksums and numbering of fragments. It
+                is 64 bits long for simplicity. Symbol &lt;&lt; is used for rotation (not shift) to the left.
 
             </t>
+
             <t>
-                A hash of a first order leave is nothing but (where all used values are converted to 64
+                A hash of a first order leaf is nothing but (where all used values are converted to 64
                 bit values first with any remaining high order bits zero'ed out)
-                XOR(hash, (system-id-of-fragment + 1) &lt;&lt; fragment#) followed by
+                the usual XOR(hash, (system-id-of-fragment + 1) &lt;&lt; fragment#) followed by
                 XOR(hash, (fragment# + 1) &lt;&lt; 32 | (fragment-seq# + 1) &lt;&lt;
                 16 | (fragment-csum + 1)) for all contained fragments .
                 Obviously, such an operation can be easily reversed to yield the previous
-                hash without the fragment which allows for very fast removal, addition of fragments and updates
+                hash with the fragment removed which allows for very fast removal, addition of fragments and updates
                 of the relevant fields.
             </t>
+
+            <t>Example of adding multiple fragments and removing those (in different order) which yields ultimately
+            the same initial hash is found below:</t>
+
+            <figure anchor="simple-hash">
+            <artwork align="left" name="" type="" alt=""><![CDATA[
+Initial Hash: CDDC72CF
+Adding Fragment 0100.0000.0000.00 #: 0 CSUM: 1 SEQNR: 0
+Hash after Addition 10001CDDD72CC
+Adding Fragment 0100.0000.0000.00 #: 1 CSUM: 2 SEQNR: 1
+Hash after Addition 1010003CDDF72CE
+Adding Fragment 0200.0000.0000.00 #: 1 CSUM: 3 SEQNR: 2
+Hash after Addition 3010001CDDC72CB
+Removing Fragment 0100.0000.0000.00 #: 0 CSUM: 1 SEQNR: 0
+Hash after Removal 3000000CDDD72C8
+Removing Fragment 0100.0000.0000.00 #: 1 CSUM: 2 SEQNR: 1
+Hash after Removal 2000002CDDF72CA
+Removing Fragment 0200.0000.0000.00 #: 1 CSUM: 3 SEQNR: 2
+Hash after Removal CDDC72CF
+]]></artwork>
+            </figure>
+
             <t>
-                A hash of second order leave is nothing but XOR of all the hashes of its contained first order leaves
-                with. Again, this allows to update the hash be adding, removing a leaf or
-                changing its hash
-                in a very fast and simple manner. The same packing logic of keeping 80 first order leaves
-                in a second order leaves applies. This will cause a mismatch in the hash of a 2nd order leaf
+                A hash of second order leaf is nothing but XOR of all the hashes of all the contained first order leaves.
+                Again, this allows to update the hash when adding, removing a leaf or
+                changing its checksum
+                in a very fast and simple manner. The packing of second order leaves is determined by
+                how many first order hashes can be fitted into a PDU normally and based on <xref target="format"/>
+                we can set a second order leaf size to 70. This will cause a mismatch in the hash of a 2nd order leaf
                 to advertise roughly a PDU full of first order leaves.
             </t>
 
             <t>
                 Ultimately, and fairly obviously, third order hash uses second order hash logic to keep its hash.
-                However, the question remains. This all means that every time a first order leaf changes the
+                This all means that every time a first order leaf changes the
                 contained system IDs for
                 some reason the merkle hashes will have to be readjusted recursively in according 2nd and third
                 order leaves. This is in itself nothing
@@ -211,8 +271,213 @@
                 trees work after all.
             </t>
 
+            <t>A first example will serve well here. We limit ourselves in the examples to consideration of a
+                LSDB with 512 nodes with system identifiers of 1000.0000.00 &lt;2 digits node-id&gt; each holding
+                32 fragments
+                numbered 0 to 31.
+                We leave the uneven node identifiers out to have some "holes" in the numbering to hit some corner
+                cases in further examples.
+                We disregard the pseudo node byte as simply another byte of system identifier since it does not
+                contribute
+                further details to the scheme and use value 0 in further text.
+
+            </t>
+
+            <t>
+                In a stable state we can expect the following 128 first order leaves (each holding 2 systems worth
+                of fragments) generating three packets.
+                And as logical consequence two single second order leaves. First of the three first order packets
+                will look roughly like this
+            </t>
+
+            <figure anchor="first-order">
+            <artwork align="center" name="" type="" alt=""><![CDATA[
+        ...
+
++--------------------------------------------+
+|  Start System ID: 0000.0000.0000.00        |
++--------------------------------------------+
+|  End System ID:   0000.0000.00A0.00        | // 80 systems
++--------------------------------------------+
+|  HSNP Level: 0                             |
++--------------------------------------------+
+|  Start System ID: 1000.0000.0000.00        |
++--------------------------------------------+
+|  End System ID:   1000.0000.0002.00        |
++--------------------------------------------+
+|              Merkle Hash                   |
++--------------------------------------------+
+..
+|  Start System ID: 1000.0000.008E.00        |
++--------------------------------------------+
+|  Start System ID: 1000.0000.00A0.00        |
++--------------------------------------------+
+|              Merkle Hash                   |
++--------------------------------------------+
+]]></artwork>
+            </figure>
+
+            <t>The 2nd order packet will look like this</t>
+
+            <figure anchor="second-order">
+            <artwork align="center" name="" type="" alt=""><![CDATA[
+        ...
+
++--------------------------------------------+
+|  Start System ID: 0000.0000.0000.00        |
++--------------------------------------------+
+|  End System ID:   FFFF.FFFF.FFFF.FF        |
++--------------------------------------------+
+|  HSNP Level: 1                             |
++--------------------------------------------+
+|  Start System ID: 1000.0000.0000.00        |
++--------------------------------------------+
+|  End System ID:   1000.0000.0100.00        |
++--------------------------------------------+
+|              Merkle Hash                   |
++--------------------------------------------+
+|  Start System ID: 1000.0000.008E.00        |
++--------------------------------------------+
+|  Start System ID: 1000.0000.0200.00        |
++--------------------------------------------+
+|              Merkle Hash                   |
++--------------------------------------------+
+]]></artwork>
+            </figure>
 
         </section>
+
+        <section title="HSNP PDU Format" anchor="format">
+            <t>
+                HSNP PDU Format follows closely CSNP format where instead of CSNP entries the according merkle
+                hashes are propagated.
+            </t>
+
+            <artwork align="center" name="" type="" alt=""><![CDATA[
+        ...
+
++--------------------------------------------+
+|              PDU Length                    |
++--------------------------------------------+
+|              Source ID                     |
++--------------------------------------------+
+|              Start System ID               |
++--------------------------------------------+
+|              End System ID                 |
++--------------------------------------------+
+|              HSNP Level                    |
++--------------------------------------------+
+|           Variable Length Fields           |
++--------------------------------------------+
+
+]]></artwork>
+
+            <t> Start and End System IDs are or the usual ID Length + 1 byte length and indicate, just like CSNP do,
+                the range that the HSNP covers.
+            </t>
+            <t>
+                HSNP level consists of 1 byte of level with 0 indicating "first level hashes".
+            </t>
+            <t>
+                The variable length fields are a sorted sequence of covered ranges in the following format
+            </t>
+
+            <artwork align="center" name="" type="" alt=""><![CDATA[
+
++--------------------------------------------+
+|              Start System ID               |
++--------------------------------------------+
+|              End System ID                 |
++--------------------------------------------+
+|              Merkle Hash                   |
++--------------------------------------------+
+]]></artwork>
+
+            <t>End System ID LSPs are  included in the hash.   </t>
+            <t>
+                Merkle hash consists of 4 bytes of the 64-bit computed hash with upper and lower 4 bytes XOR'ed together.
+            </t>
+
+            <t>
+                This makes an entry in typical deployment scenarios 7 + 7 + 4 = 18 bytes long.
+            </t>
+
+
+        </section>
+
+        <section title="Procedures">
+            <section title="Maximum supported level negotiation in IIH">
+                <t>
+                IIH of nodes supporting this extension MUST include in IIH a new TLV that will indicate
+                    support for reception of HSNPs. Additionally, the TLV will carry the maximum level
+                    of HSNPs that the node will advertise. Each node MUST pick the minimum of
+                    advertised levels on the adjacency and use that for the HSNPs it will advertise.
+                    All nodes on the adjacency MUST advertise
+                    the TLV on their IIHs, otherwise HSNPs are not used.
+                </t>
+            </section>
+
+            <section title="Advertising HSNPs">
+                <t>
+                Advertising normal CSNPs is replaced with advertisement of HSNPs at highest negotiated level.
+                    Under normal stable network condition this will be enough to maintain database integrity
+                    across all nodes with a minimum of transmission and processing.
+                </t>
+
+                <t>
+                    In case a node receives HSNPs where the merkle hash ranges are not the same, the node MUST
+                    either to compute and verify the hashes over the ranges indicated or
+                    disaggregate the overlapped ranges to a lower level HSNPs. The disaggregation is
+                    less preferred since in case of range mismatches over all levels and both sides
+                    using this strategy this can lead to a 'ping-pong' ending with CSNPs ultimately.
+                </t>
+
+                <t>
+                A node receiving an HSNP where the hash received does not match on recomputation or
+                    comparison the result on its own LSDB
+                    SHOULD send immediately HSNPs of one level below with the Merkle hashes for the
+                ranges where the hash mismatch was detected. Alternately, a node MAY choose to
+                    immediately send according CSNPs, PSNPs or flood the LSPs that have been detected
+                    as not matching the merkle hashes. Sending CSNPs may be preferable if the mismatch
+                covers relatively few LSPs. </t>
+
+                <t>In case a node detects that it holds Merkle hashes for LSPs that are not covered by the
+                    received HSNP (start and end range and "holes" between ranges can be used to detect that
+                    condition), it MUST trigger the same behavior as triggered by CSNP with this condition,
+                    i.e. flood the missing LSPs.
+                </t>
+
+
+            </section>
+
+        </section>
+
+        <section title="Further Considerations" toc="default" anchor="further">
+
+            <section title="Impact of Packet Losses">
+                <t>
+                    Many levels of aggregation will be more susceptible to packet losses since each loss
+                    covers a much larger part of the LSDB. Additionally, during disaggregation where
+                    multiple HSNP levels must be triggered, the loss will force a delay until the
+                    higher level HSNP is regenerated.
+                </t>
+            </section>
+
+            <section title="Decompression and Caching/Comparison Optimizations">
+                <t>
+                    As mentioned above a node may apply many strategies to speed up decompression.
+                    LSPs missing in HSNPs as not covered by ranges are clearly "missing in action" and can
+                    be reflooded, small ranges where merkle mismatched can generate CSNPs, PSNPs or lead to flooding.
+                </t>
+                <t>
+                    Caching of hashes can be applied at many levels since the merkle hashes suggested here are
+                    easily computed, even if certain elements must be removed from them, so e.g. on receiving a
+                    range &lt;A -- B&gt; while the node already holds &lt; A -- B &amp; next-after-B&gt; can be simply
+                    adjusted by removing 'next-after-B' merkle hash defined in this document from the cached result.
+                </t>
+            </section>
+
+        </section> <!-- end of contributors -->
 
         <section title="Security Considerations" toc="default">
 
@@ -226,11 +491,7 @@
             </t>
         </section>
 
-        <section title="Further Considerations" toc="default" anchor="further">
 
-            <t>Impact of losses</t>
-
-        </section> <!-- end of contributors -->
 
 
         <!-- 2 -->
@@ -243,11 +504,11 @@
         <!-- 2 -->
         <section title="Acknowledgement" toc="default">
 
-            <t>The discussions about "compressing CSNPs" go very long way back, to the times Radia Perlman were
-                allegedly
+            <t>The discussions about "compressing CSNPs" go very long way back, allegedly to the times Radia Perlman was
                 stalking the halls with insomniac Dave Katz. Recent efforts to push the scale of the protocol to new
                 heights
-                made the effort worth the effort (pun intended) to codify it into a working engineering solution.
+                made the effort worth the effort (pun intended) to codify it into a standardized, practical
+                engineering solution.
             </t>
 
         </section> <!-- end of contributors -->
