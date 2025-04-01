@@ -66,10 +66,11 @@
         <abstract>
             <t>
                 The document introduces an optional, new type of SNPs called Hierarchical SNP (HSNP) that can
-                compress the traditional CSNPs into a variant of merkle tree, hence
-                allowing to support very large databases and adjacency numbers due to vastly reduced size of CSNP
-                exchanges. Such an approach should lead in case of inconsistencies to much faster re-synchronization
-                since only a subset of CSNPs is necessary to correct the entropy present.
+                compress the traditional CSNPs exchange into a variant of merkle tree, hence
+                allowing to support very large databases and adjacency numbers.
+                Such an approach should lead in case of inconsistencies to much faster re-synchronization
+                since only a subset of packets compared to full scale CSNP exchange
+                is necessary to correct the entropy present.
             </t>
 
 
@@ -81,12 +82,13 @@
 
         <section title="Introduction">
 
-            <t>The document introduces an optional, new type of SNPs called Hierarchical SNP (HSNP) that can
-                compress the traditional CSNPs
-                into a variant of a hybrid of merkle tree <xref target="MERKLE"/> and skip lists <xref target="SKIP"/>, hence
-                allowing to support very large databases and adjacency numbers due to vastly reduced size of CSNP
-                exchanges. Such an approach should lead in case of inconsistencies to much faster re-synchronization
-                since only a subset of CSNPs is necessary to correct the entropy present.
+            <t> The document introduces an optional, new type of SNPs called Hierarchical SNP (HSNP) that can
+                compress the traditional CSNPs exchange into a variant of merkle tree <xref target="MERKLE"/>
+                and skip lists <xref target="SKIP"/>, hence
+                allowing to support very large databases and adjacency numbers.
+                Such an approach should lead in case of inconsistencies to much faster re-synchronization
+                since only a subset of packets compared to full scale CSNP exchange
+                is necessary to correct the entropy present.
             </t>
 
             <t>
