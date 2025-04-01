@@ -83,7 +83,7 @@
 
             <t>The document introduces an optional, new type of SNPs called Hierarchical SNP (HSNP) that can
                 compress the traditional CSNPs
-                into a variant of merkle tree <xref target="MERKLE"/>, hence
+                into a variant of a hybrid of merkle tree <xref target="MERKLE"/> and skip lists <xref target="SKIP"/>, hence
                 allowing to support very large databases and adjacency numbers due to vastly reduced size of CSNP
                 exchanges. Such an approach should lead in case of inconsistencies to much faster re-synchronization
                 since only a subset of CSNPs is necessary to correct the entropy present.
@@ -544,6 +544,15 @@ Hash after Removal CDDC72CF
                 </front>
             </reference>
 
+            <reference anchor="SKIP">
+                <front>
+                    <title>Skip lists: A probabilistic alternative to balanced trees</title>
+                    <seriesInfo name="Communications of the ACM" value=""/>
+                    <author initials="C.-W." surname="Phan">
+                    </author>
+                    <date year="1990"/>
+                </front>
+            </reference>
 
         </references> <!-- end of normative references -->
 
