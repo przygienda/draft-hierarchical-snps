@@ -111,31 +111,54 @@
         </section>
 
 
-        <section title="Dynamic Leaf Partitioning">
+        <section title="Suggested Dynamic Leaf Partitioning">
 
             <t>
                 Practically speaking, the most interesting problem is the correct subdivision of the database into
-                first level collection of leaf nodes (CSNP entries) that on one hand do provide a good compression,
-                on the other hand the subdivision should only change when necessary, otherwise the neighbor receiving the
+                first level collection of leaf nodes (CSNP entries) that on one hand can provide a good compression,
+                on the other hand the subdivision changes as little as possible. Otherwise the neighbors receiving the
                 information
                 may have to recompute the hashes rather than relying on a cache representing its own merkle tree.
+                The subdivision should also produce enough "bins" no matter the distribution of the fragment IDs
+                in the network. This is important to prevent such things as packing of all the fragments into a single checksum when
+                e.g. a hash function degenerates. And ideally, a hash mismatch should produce not more than a single packet or two
+                with lower
+                level checksums or CSNPs to optimize re-convergence while minimizing amount of packets exchanged.
             </t>
 
             <t>
-                Each of CSNP entries consumes LSP ID + Fragment + Seq# + CSUM + Lifetime
+                To start with, in IS-IS networks
+                we can fit into the prevailing 1500 bytes somewhat less than 100 of
+                zero level entries for the foreseeable future. This is the consequence of
+                CSNP entries consuming LSP ID + Fragment + Seq# + CSUM + Lifetime
                 length which
-                amounts to 8 + 2 + 2 + 2 = 14 bytes. We can fit into the prevailing 1500 bytes somewhat less than 100 of
-                such entries. Since it is desirable to produce one packet on a miss on the merkle hash of first level
-                leaf, such leaves will be standardized to pack 80
-                LSP fragments with exceptions following later. We do not try to maximize the "packing" since LSDB may grow and to
+                amounts to 8 + 2 + 2 + 2 = 14 bytes each.
+            </t>
+
+            <t> Subsequently, first and higher level hashes will occupy (as shown in <xref target="first-order"/>) the length
+                of 7 + 7 + 4 = 18 bytes
+                per hash
+                and hence around 80 of those hashes fit into a packet.
+            </t>
+
+            <t>Those considerations lead to the suggested partitioning and packing scheme below. </t>
+
+            <t>
+                To start with, as stated, it is desirable to produce one packet on a miss on the merkle hash of first level
+                leaf and hence such leaves will  pack initially 80
+                LSP fragments with exceptions following later. We do not try to maximize the "initial packing". LSDB may grow and to
                 maximize the chances of same "leaf packing" on both sides
-                of an adjacency, even during flooding transitions,  and hence use of hashes some
+                of an adjacency, even during flooding transitions, some
                 "slack"
                 is advisable.
             </t>
 
             <t>
-                The initial packing will always put all fragments of a system into same leaf (which of course can exceed
+                At higher levels, to begin with 60 hashes should be summarized by a higher level hash for the same reason.
+            </t>
+
+            <t>
+                The packing will always put all fragments of a system into same leaf (which of course can exceed
                 the advisable 80 fragments sometimes) and a first order leaf will be considered "full" if addition
                 of next System ID fragments would exceed this size (except obviously, when the leaf is empty).
             </t>
@@ -143,31 +166,35 @@
 
             <section title="Repacking">
                 <t>
-                    It is beneficial for efficient implementation using caching to agree on both sides
-                    on the ranges of the Merkle hashes advertised. However, since the nodes will always
+                    During flooding transitions the databases on different nodes may be obviously different
+                    for some period of time. As stated, even in such situations
+                    it is beneficial for efficient implementations using caching to agree on both sides
+                    on the ranges of the Merkle hashes advertised. Or alternately, have a fast way to
+                    reconstruct the internal merkle hash for a range. E.g., in the suggested packing scheme,
+                    since the nodes will always
                     agree on the "system-ID" boundary, a merkle hash per system ID can be  easily kept
                     and if the received ranges do not agree with cached
                     ranges the necessary merkle hash recomputed very quickly. As example,
                     in first level the worst case of 2 leaves
-                    containing ~80 nodes and "intersecting" the cached internal ranges an implementation
+                    containing ~80 nodes each and "intersecting" the cached internal ranges an implementation
                     will have to merkle hash about 160 hashes (one per System ID) to validate the received value.
                 </t>
 
                 <t>Obviously, it is still highly preferred for the ranges on advertised merkle hashes
-                to agree on their system ID ranges and it is of most importance at the top level
-                since under stable conditions those are the merkle hashes exchanged and basically
-                reducing the CSNP exchange to minimal amount of packets and processing. </t>
+                to agree on their system ID ranges precisely and it is of most importance at the top level.
+                Under stable conditions those are the merkle hashes
+                reducing the CSNP exchange to minimal amount of packets and processing effort. </t>
 
                 <t>
-                    To settle on the same ranges in HSNPs an implementation SHOULD let a
+                    To settle on the same ranges in HSNPs an implementation of the suggested packing should let a
                     leaf that
                     drops under 50% occupancy "start robbing" system IDs from "left" of the next leaf until the current
                     leaf meets the "full condition". This is of course a recursive action that may ultimately generate
                     less leaves, remove some and in a recursive fashion lead to the same "greedy robbery from the left"
                     in the next level up. The "left" is colloquial here for starting with lowest System IDs under
                     normal sorting criteria.
-                    On the other end of the spectrum a leaf that holds more than 150% of usual capacity (i.e. 80 * 1.5 LSPs)
-                    SHOULD be split into two leaves unless it holds a single System ID with more than 80 fragments.
+                    On the other end of the spectrum a leaf that holds more than 150% of usual capacity (i.e. 80 * 1.5 LSPs or 60 * 1.5 Hashes)
+                    should be preferably split into two leaves unless it holds a single System ID with more than 80 fragments.
                     Splitting the leaves may cause a repacking at a higher
                     level again in a recursive fashion.
 
@@ -182,17 +209,27 @@
                 </t>
 
                 <t>
-                    TBD: precise splitting/merging algorithms so nodes end up on precisely same ranges with
-                    highest possible likelihood. A possibly
+                    Precise splitting/merging algorithms agreed upon increase the likelihood of nodes ending up on
+                    precisely same ranges. A possibly
                     simpler idea to discuss is to simply "repack" the whole thing on some balance violations or
-                    periodically.
+                    periodically. Another idea is to simply use ISIS fragment sliding but this may lead in worst
+                    case to first level checksumming a single fragment over time.
+</t>
+                <t>
+                    Overall, different partitioning and packing approaches are possible but if system ID
+                    as natural partition is not used, this will likely change the packet
+                    format since the partition boundaries will necessarily reflect which of the fragments are
+                    covered by the hashes. Although, given that ordering of fragments has to be preserved it is hard to
+                    imagine anything else but start and end consisting of fragment IDs.
                 </t>
 
             </section>
 
+
+
         </section>
 
-        <section title="Fast, incremental hashing function">
+        <section title="Fast, incremental, self-inverse hashing function">
             <t>
                 Since we need to generate massive amount of hashes over sets of ever-changing fragments it is very
                 desirable to use a specialized hash function that provides means for very fast incremental adjustment
@@ -229,6 +266,9 @@
                 of the relevant fields.
             </t>
 
+            <t>
+                <xref target="algo"/> includes reference code of the introduced hashing.
+            </t>
             <t>Example of adding multiple fragments and removing those (in different order) which yields ultimately
             the same initial hash is found below:</t>
 
@@ -299,20 +339,20 @@ Hash after Removal CDDC72CF
 +--------------------------------------------+
 |  Start System ID: 0000.0000.0000.00        |
 +--------------------------------------------+
-|  End System ID:   0000.0000.00A0.00        | // 80 systems
+|  End System ID:   0000.0000.00A0.00        | // 80 hashes for 160 systems
 +--------------------------------------------+
 |  HSNP Level: 0                             |
 +--------------------------------------------+
 |  Start System ID: 1000.0000.0000.00        |
 +--------------------------------------------+
-|  End System ID:   1000.0000.0002.00        |
+|  End System ID:   1000.0000.0002.00        | // 64 fragments over 2 systems
 +--------------------------------------------+
 |              Merkle Hash                   |
 +--------------------------------------------+
 ..
 |  Start System ID: 1000.0000.008E.00        |
 +--------------------------------------------+
-|  Start System ID: 1000.0000.00A0.00        |
+|  End System ID:   1000.0000.00A0.00        |
 +--------------------------------------------+
 |              Merkle Hash                   |
 +--------------------------------------------+
@@ -334,13 +374,13 @@ Hash after Removal CDDC72CF
 +--------------------------------------------+
 |  Start System ID: 1000.0000.0000.00        |
 +--------------------------------------------+
-|  End System ID:   1000.0000.0100.00        |
+|  End System ID:   1000.0000.00A0.00        |
 +--------------------------------------------+
 |              Merkle Hash                   |
 +--------------------------------------------+
-|  Start System ID: 1000.0000.008E.00        |
+|  Start System ID: 1000.0000.00A2.00        |
 +--------------------------------------------+
-|  Start System ID: 1000.0000.0200.00        |
+|  End System ID:   1000.0000.0200.00        |
 +--------------------------------------------+
 |              Merkle Hash                   |
 +--------------------------------------------+
@@ -519,6 +559,7 @@ Hash after Removal CDDC72CF
 
     <back>
 
+
         <references title="Normative References">
 
             <!-- &RFC3032;
@@ -562,6 +603,48 @@ Hash after Removal CDDC72CF
 
 
         </references> <!-- end of informative references -->
+
+        <section title="Reference Implementation of Fragment Hashing" anchor="algo">
+
+            <artwork align="center" name="" type="" alt=""><![CDATA[
+#[derive(Eq, PartialEq, Hash)]
+struct IncrementalHash(u64);
+
+const SEED: u64 = 0xCDDC72CF;
+
+impl Default for IncrementalHash {
+    fn default() -> Self {
+        IncrementalHash(SEED)
+    }
+}
+
+impl IncrementalHash {
+    // takes arbitrary number of byte arrays
+    fn hash_in(&mut self, add: &[u64]) {
+        for f in add {
+            self.0 ^= f;
+        }
+    }
+
+    fn hash_in_fragment(&mut self, sid: &SystemID, fragment_number: FragmentNr,
+                        fragment:  &Arc<FragmentContent>) {
+        let len = 8.min(sid.id.len());
+        let mut sidc: [u8; 8] = [0; 8];
+        sidc[(8-len) ..].copy_from_slice(&sid.id);
+        sidc.rotate_left(fragment_number as _);
+
+        self.hash_in(&[u64::from_be_bytes(sidc) + 1]);
+
+        let frnr = fragment_number as u64 + 1;
+        let frsn = fragment.seqnr as u64 + 1;
+        let frcs = fragment.csum as u64 + 1;
+
+        let hin = frnr << 32 | frsn << 16 | frcs;
+        self.hash_in(&[hin]);
+    }
+}
+]]></artwork>
+        </section>
 
     </back>
 
