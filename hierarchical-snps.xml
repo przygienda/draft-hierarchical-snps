@@ -574,9 +574,9 @@
 |              Merkle Hash                   |
 ...
 +--------------------------------------------+
-|  Start System ID: 1000.0000.01F0.00        |
+|  Start System ID: 1000.0000.01F0           |
 +--------------------------------------------+
-|  End System ID:   1000.0000.0200.00        |
+|  End System ID:   1000.0000.0200           |
 +--------------------------------------------+
 |              Merkle Hash                   |
 +--------------------------------------------+
@@ -635,8 +635,18 @@
                 <t>
                 Although the mechanism can be applied to the point where a single merkle hash represents
                 an arbitrarily large database, such a single hash is not advisable. Limiting hash coverage
-                to the point where a single full HSNP packet is far more preferable.
+                to the point where at maximum a single full HSNP packet is far more preferable.
 
+                </t>
+                <t>
+                    Generally, limiting compression to the point where maximum of a dozen HSNP packets cover the database
+                    can be practically speaking better than enough. As practical example a single HSNP packet on
+                    a 1E3 fragments database compressed to maximum extent
+                    covers with each hash ~140 fragments. Allowing more HSNP packets will lead to less disaggregation
+                    on LSDB changes obviously, lower collision possibility further (which in 1E3 sized LSDB is however
+                    vanishingly small with a single hash already) and e.g.
+                    10 HSNP packets compared to 100 CSNP packets covering the LSDB normally
+                    is a compression factor of 10x already.
                 </t>
             </section>
 
@@ -673,9 +683,9 @@
                     birthday paradox first ballpark number of 0.18% collision likelihood in
                     48 bit numbers colliding in 1E6 sized set, i.e. a single hash). Intuitively we would expect that using
                     64 bit numbers with resulting birthday paradox probability of 0.0000027% would be necessary.
-                    But mirror operational reality as close as possible, we fall on extensive
-                    simulations of refreshes on a vast network of 50E3 nodes with 1E6 fragments under assumption
-                    of node IDs differing in 3 bytes only, maximum fragment lifetime and fletcher checksums
+                    But with intention of mirroring operational realities as close as possible, we fall on extensive
+                    simulations of refreshes on a vast network of 50E3 nodes with 1E6 fragments under assumptions
+                    of node IDs differing in 3 bytes only, maximum fragment lifetime and protocol checksums
                     on each sequence number refresh being a random value. We change the length of the packet in
                     5% of all refreshes only to mirror a rather stable network. 32 networks, each running for 2 years
                     are used to derive the numbers.
@@ -684,11 +694,14 @@
                     The absolute number of collisions in 36E9 refreshes over set of all fragments
                     is in the order of 200-300 collisions or
                     6E-9 probability or expressed otherwise about 3 occurrences a year. Lifetime of such a
-                    collision shows on simulations as average of about 10 hours.
-
+                    collision shows on simulations as average of about 10 hours. The 6E-9 being significantly
+                    lower than the 1E-3 predicted by birthday paradox is likely to be attributed to the fact
+                    that node id can be seen as an always differing "salt" to the checksums and hence "pre-partitioning"
+                    the space of probabilities.
                 </t>
                 <t>
-                    The situation becomes more interesting once we start to consider how many collision occur in
+                    The situation becomes more interesting and practically relevant
+                    once we start to consider how many collision occur in
                     the highest compression packet with 70 hashes. This roughly halves the amount of collisions
                     so we can expect in such a large network about 1 collision per year. Once we go to the assumption
                     that we don't use maximum compression but limit it to 70 HSNP packets we end up with about 1 collision
@@ -698,7 +711,7 @@
                 <t>
                 Surprisingly enough, going to 64 bit drops the total number of collisions by about 50% but under the
                 assumptions of a single full HSNP packet the outcome is measurably worse. This is based on the fact
-                taht 64 bit collision hashes occur much closer on the database, something for which we lack an explanation.
+                taht 64 bit collision hashes occur much "closer together" on the database, something for which we lack an explanation.
                 </t>
                 <t>
                 Obviously, a very, very conservative, not to say paranoid implementation can easily
@@ -825,7 +838,7 @@
 
             <reference anchor="ID.draft-ietf-lsr-distoptflood-11">
                 <front>
-                    <title>BGP Optimal Route Reflection</title>
+                    <title>IS-IS Distributed Flooding Reduction</title>
                     <author initials="R." surname="White et al.">
                         <organization/>
                     </author>
