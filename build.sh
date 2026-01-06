@@ -27,6 +27,7 @@ D=hierarchical-snps
 
 xml2rfc $D.xml
 xml2rfc --pdf $D.xml
+xml2rfc --v2 --raw $D.xml
 
 nl -ba $D.txt > $D.nl.txt
 
