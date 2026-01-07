@@ -97,7 +97,7 @@
 
             <t>
                 The document introduces an optional new type of SNP called the Hierarchical SNP (HSNP). It compresses
-                traditional CSNP exchanges into a Merkle tree?like structure <xref target="MERKLE"/>,
+                traditional CSNP exchanges into a Merkle tree-like structure <xref target="MERKLE"/>,
                 enabling faster synchronization of large
                 databases and adjacency information while reducing the overhead of regular CSNP exchanges during
                 steady state
@@ -127,7 +127,7 @@
                 each CSNP entry for an LSP as equivalent to a "as good as perfect",
                 though rather long,
                 Merkle hash. In other words, in the first step, the LSP ID, sequence number,
-                and checksum act as a ?perfect fragment hash?. We also include the fragment's PDU length to add
+                and checksum act as a "perfect fragment hash". We also include the fragment's PDU length to add
                 more entropy in the next step. The CSNPs then serve as the "bottom" of the Merkle tree
                 conceptually speaking.
 
@@ -170,9 +170,9 @@
                 changing, neighboring systems will need to recalculate their hashes instead of reusing cached ones from
                 their own Merkle tree, which adds unnecessary computation.
 
-                The subdivision should also create enough ?bins? to handle any distribution of fragment IDs across the
+                The subdivision should also create enough "bins" to handle any distribution of fragment IDs across the
                 network. This helps avoid pathological cases where all fragments might end up in a single hash, such as
-                when e.g. a hashing function behaves poorly. Ideally, when a hash mismatch occurs, it should take only one or
+                when e.g. a hashing function degrades. Ideally, when a hash mismatch occurs, it should take only one or
                 two packets, with hashes for smaller fragment groups or regular CSNPs, to fix the difference.
                 Reducing I/O and/or computation directly improves how quickly the systems synchronize.
             </t>
@@ -229,12 +229,12 @@
             <t>
                 At the lowest compression level, it is optimal to generate a single CSNP packet on a mismatch in
                 a hash. To achieve this, the first-level hashes should initially group about 80 LSP fragments
-                together, with exceptions handled later. There?s no need to maximize this initial packing.
+                together, with exceptions handled later. There is no need to maximize this initial packing.
                 </t>
 
             <t>
 
-                As the LSDB grows, it?s better to leave some flexibility (?slack?) in how fragments are grouped. This
+                As the LSDB grows, it is better to leave some flexibility ("slack") in how fragments are grouped. This
                 increases the likelihood that both sides of an adjacency will maintain the same leaf-level packing, even
                 during flooding transitions, and prevents the ranges from shifting constantly.
 
@@ -259,21 +259,21 @@
                 The packing process always places all fragments belonging to the same system and its pseudonodes within
                 a single node Merkle hash. This hash may occasionally exceed the recommended size of 80 fragments. When
                 it comes to node range hashes a
-                hash is considered ?full? when adding the next system?s fragments would go beyond this
+                hash is considered "full" when adding the next system's fragments would go beyond this
                 limit. Unless, of course, the leaf is still empty.
                 </t>
             <t>
 
                 At that point, any range hash can be folded into a higher-level, less specific range hash. However,
                 whenever a mismatch
-                occurs at any level, the process must disaggregate the data and send the corresponding smaller, more
+                occurs at any level, the process must disaggregate the hash and send the corresponding smaller, more
                 specific range or node hash instead.
             </t>
 
 
             <section title="Denser Packing and Repacking">
 
-                <t>To talk meaningfully about node range hashes,  we?ll refer to hashes that cover a wider range of nodes as
+                <t>To talk meaningfully about node range hashes,  we will refer to hashes that cover a wider range of nodes as
                     less specific, and to those covering only a subset of that range as more specific.
 
                 </t>
@@ -297,9 +297,9 @@
                     As a secondary consideration, it would be useful for efficient, cache-based implementations for both
                     sides to agree on the ranges of Merkle hashes advertised. This would make caching of merkle nodes much more
                     effective. However, while this idea seems viable in theory, implementing it across a large number of
-                    interfaces would effectively require a global synchronization protocol ? something impractical in a
+                    interfaces would effectively require a global synchronization protocol - something impractical in a
                     network where nodes are constantly adding, removing, and updating fragments asynchronously. These
-                    ongoing changes continually affect what the ?optimal? hash ranges are. And with enough churn, such
+                    ongoing changes continually affect what the "optimal" hash ranges are. And with enough churn, such
                     a range negotiation protocol might never converge at all.
 
                     </t>
@@ -310,14 +310,14 @@
                     Alternatively, providing a fast way to reconstruct the internal Merkle hash for a mismatched range
                     could reduce the need for perfect range alignment. For example, in the proposed packing scheme, nodes
                     always agree on system ID boundaries. By maintaining a Merkle hash per system ID, a node can quickly
-                    recompute the required hashes whenever received ranges differ from its cached ones ? even in
+                    recompute the required hashes whenever received ranges differ from its cached ones - even in
                     networks with a large number of nodes.
 
                 </t>
 
                 <t>
                     It is still highly preferable for advertised Merkle hash ranges to align on system ID boundaries as
-                    much as possible?especially at the top level. Under stable conditions, these top-level Merkle hashes
+                    much as possible - especially at the top level. Under stable conditions, these top-level Merkle hashes
                     significantly reduce the amount of CSNP exchange required, minimizing both packet volume and
                     processing overhead.
                 </t>
@@ -333,7 +333,7 @@
                 <t>
                     In summary, a node should avoid compressing beyond the point where a single HSNP covers the entire
                     database. Ideally, one HSNP should contain at most about (MTU / Node Range Hash Entry Size)
-                    hashes ? or fewer ? to keep collision probabilities low, as described in detail in <xref target="collisions"/>.
+                    hashes - or fewer - to keep collision probabilities low, as described in detail in <xref target="collisions"/>.
 
                 </t>
 
@@ -389,10 +389,11 @@
 
         <section title="Hash Function for a Fragment">
             <t>
-                A single fragment generates a 48-bit fletcher checksum (which is a trivial extension of existing
-                32 bit standard). The fletcher variant used is for performance reasons replacing the modulo 
-                division by a simple shift down. The 48-bit variant has been chosen based on considerations
-                described in <xref target="collisions"/>.
+
+                Each fragment generates a 48-bit Fletcher checksum, which is a straightforward extension of the existing
+                32-bit standard. For performance reasons, this Fletcher variant replaces the modulo operation with the
+                common approximation of a simple bit shift. The choice of a 48-bit checksum is based on the analysis provided in
+                <xref target="collisions"/>.
             </t>
             <t>
                 <xref target="fletcher-hash"/> provides reference implementation of algorithm building the 48-bits
@@ -400,7 +401,7 @@
                 checksum that serves as hash of fragments.
             </t>
             <t>
-                A fletcher checksum should never generate a zero value but in such case MUST be replaced with
+                In case the fletcher checksum generates a zero value the value MUST be replaced with
                 constant of value 1.
             </t>
 
@@ -411,12 +412,12 @@
 
             <figure anchor="reference-hash">
                 <artwork align="left" name="" type="" alt=""><![CDATA[
-            Node: 0101:0101:0000.01
+            Node ID: 0101:0101:0000.01
             Fragment#: 01
             Sequence#: 0001
             ISIS Checksum: $0001
             ISIS PDU Length: 512
-            Hash: 090E0E020404
+            Hash: $090E0E020404
 ]]></artwork>
             </figure>
 
@@ -424,14 +425,13 @@
 
         <section title="Fast, Incremental, Self-Inverse Hashing Function for Fragment Ranges" anchor="hashfn">
             <t>
-                Since at scale we need to generate massive amount of hashes over sets of ever-changing fragments it is very
-                desirable to use a specialized hash function that provides means for fast incremental adjustment
-                of hash result on fragments arriving, aging out or changing their checksums.
+                Since large-scale deployments must compute significant numbers of hashes over sets of frequently changing
+                fragments, it is highly desirable to use a specialized hash function that supports fast incremental
+                updates when fragments are added, removed, or when their checksums change.
                 </t>
             <t>
-                Once we start to build hashes over sets of fragments we would like to allow for splitting or
-                merging of such leaves very quickly, also if we are presented with differences in fragment sets
-                of two hashes.
+                Once hashes are built over sets of fragments, it is desirable to support very fast splitting and merging
+                of such sets, especially when two hashes differ in which fragments they contain.
             </t>
 
             <t>
@@ -443,11 +443,16 @@
 
 
             <t>
-                The hash function for sets of fragments is a very fast XOR operation of their fletcher hashes.
-                This allows to update the hash when adding, removing a leaf or
-                changing its checksum
-                in a very fast and simple manner. This also implies that less specific ranges can very quickly
-                compute their hash by XOR'ing all included more specific ranges if such hashes are available.
+                The hash for a set of fragments is computed using a very fast XOR over their Fletcher hashes. This makes
+                it straightforward to update the hash when a leaf is added, removed, or its checksum changes. As a
+                result, less specific ranges can quickly derive their hash by XOR'ing the hashes of all included, more
+                specific ranges, when those are available.
+
+<!--                The hash function for sets of fragments is a very fast XOR operation of their fletcher hashes.-->
+<!--                This allows to update the hash when adding, removing a leaf or-->
+<!--                changing its checksum-->
+<!--                in a very fast and simple manner. This also implies that less specific ranges can very quickly-->
+<!--                compute their hash by XOR'ing all included more specific ranges if such hashes are available.-->
             </t>
 
 
@@ -483,10 +488,16 @@
 
             <section title="Advertising and Receiving HSNPs">
                 <t>
-                    Advertising normal CSNPs is augmented with advertisement of HSNPs when this feature is supported.
-                    Since both CSNP and HSNPs advertise "range" in their headers they can even be
-                    randomly mixed depending what level of "compression" of fragments is best suited to the situation
-                    and range mismatches specific enough will end up to CSNP exchanges or flooding.
+                    Advertising standard CSNPs is extended with HSNP advertisements when this feature is supported. Since
+                    both CSNPs and HSNPs carry range information in their headers, they can be freely mixed, depending
+                    on which level of fragment "compression" best fits the situation. In practice, sufficiently specific
+                    range mismatches will naturally fall back to CSNP exchanges or flooding to resolve remaining
+                    differences.
+<!--                    -->
+<!--                    Advertising normal CSNPs is augmented with advertisement of HSNPs when this feature is supported.-->
+<!--                    Since both CSNP and HSNPs advertise "range" in their headers they can even be-->
+<!--                    randomly mixed depending what level of "compression" of fragments is best suited to the situation-->
+<!--                    and range mismatches specific enough will end up to CSNP exchanges or flooding.-->
                 </t>
 
                 <t>
@@ -494,47 +505,87 @@
                     highly undesirable.
                 </t>
 
-                <t> Any node IDs not covered by ranges in the packet either due to "holes" between the advertised
-                    ranges or holes between contained ranges and the Start and End System ID of the HSNP MUST be considered
-                    as missing.
-                    Consequently, in case a node detects that it holds Merkle hashes for LSPs that are not covered by the
-                    received HSNP, it MUST trigger the same behavior as triggered by CSNP with this condition,
-                    i.e. flood the missing LSPs.
+                <t>
+                    Any node IDs that are not covered by the ranges in a packet - either because there are gaps between
+                    the advertised ranges, or between those ranges and the HSNP's Start and End System IDs - MUST be
+                    treated as missing. Consequently, if a node detects that it holds Merkle hashes for LSPs that are
+                    not covered by a received HSNP, it MUST behave as it would in the same situation with a CSNP, namely
+                    by flooding the missing LSPs.
+
+
+<!--                    Any node IDs not covered by ranges in the packet either due to "holes" between the advertised-->
+<!--                    ranges or holes between contained ranges and the Start and End System ID of the HSNP MUST be considered-->
+<!--                    as missing.-->
+<!--                    Consequently, in case a node detects that it holds Merkle hashes for LSPs that are not covered by the-->
+<!--                    received HSNP, it MUST trigger the same behavior as triggered by CSNP with this condition,-->
+<!--                    i.e. flood the missing LSPs.-->
                 </t>
 
 
                 <t>
-                    As is the case with CSNPs the HSNP containing in its first range the first node of the
-                    database MUST indicate in its packet range 0000.0000.0000 as start system ID to
-                    allow detection of missing nodes. Analogous behavior applies to HSNP carrying hash
-                    covering the last node of the database.
+                    As with CSNPs, an HSNP whose first range covers the first node in the database MUST use
+                    0000.0000.0000 as the start system ID in its packet range so that missing nodes can be detected. The
+                    same rule applies at the other end of the database: an HSNP whose range covers the last node MUST
+                    indicate this in a way that allows detection of any missing trailing nodes.
+
+
+<!--                    -->
+<!--                    As is the case with CSNPs the HSNP containing in its first range the first node of the-->
+<!--                    database MUST indicate in its packet range 0000.0000.0000 as start system ID to-->
+<!--                    allow detection of missing nodes. Analogous behavior applies to HSNP carrying hash-->
+<!--                    covering the last node of the database.-->
                 </t>
 
-                <t>
-                    In case a node receives HSNPs where the merkle hash ranges are not the same, the node MUST
-                    either compute and verify the hashes over the ranges indicated or
-                    send more specific hashes for the range or in other words "disaggregate". The disaggregation is
-                    less preferred since in case of  mismatches over wide ranges both sides
-                    using this strategy end up ultimately in a 'ping-pong' ending with CSNPs.
-                </t>
+<!--                <t>-->
+<!--                    When a node receives HSNPs with Merkle hash ranges, it MUST either compute-->
+<!--                    and verify the hashes for the indicated ranges and in case of mismatch -->
+<!--                    send more specific hashes for that range - in other-->
+<!--                    words, "disaggregate". Disaggregation is less preferable, however, because if both sides repeatedly-->
+<!--                    do this for wide mismatched ranges, it can lead to a ping-pong effect that ultimately falls back to-->
+<!--                    full CSNP exchanges.-->
+<!--                    -->
+<!--                    In case a node receives HSNPs where the merkle hash ranges are not the same, the node MUST-->
+<!--                    either compute and verify the hashes over the ranges indicated or-->
+<!--                    send more specific hashes for the range or in other words "disaggregate". The disaggregation is-->
+<!--                    less preferred since in case of  mismatches over wide ranges both sides-->
+<!--                    using this strategy end up ultimately in a 'ping-pong' ending with CSNPs.-->
+<!--                </t>-->
 
                 <t>
-                    A node receiving an HSNP where the hash received does not match on recomputation or
-                    comparison the result on its own hash
-                    MUST send immediately HSNPs with Merkle hashes covering the
-                    ranges where the hash mismatch was detected. The sent hashes MUST be more specific than
-                    the range where the collison occured. Those hashes MUST be more specific than the
-                    received hashes.
-                    Alternately, a node MAY choose to
-                    immediately send according CSNPs, PSNPs or flood the LSPs that have been detected
-                    as not matching the merkle hashes. Sending CSNPs or immediate flooding
-                    may be preferable if the mismatch
-                    covers relatively few LSPs. </t>
+                    When a node receives an HSNP where any of the contained hashes
+                    does not match after recomputation or comparison, it MUST
+                    immediately send HSNPs with Merkle hashes covering the mismatched ranges. These new hashes MUST be
+                    more specific than the range where the mismatch occurred.
+                    </t>
+                <t>
+
+                    Alternatively, instead of more specific HSNP hashes, 
+                    a node MAY choose to send corresponding CSNPs, PSNPs, or flood the mismatched LSPs
+                    directly. Sending CSNPs or flooding immediately may be preferable when the mismatch affects only a
+                    small number of LSPs.
+                    </t>
+
+<!--                <t>-->
+<!--                    -->
+<!--                    A node receiving an HSNP where any of the hashes received does not match on recomputation or-->
+<!--                    comparison the result of its own hash-->
+<!--                    MUST send immediately HSNPs with Merkle hashes covering the-->
+<!--                    ranges where the hash mismatch was detected. The sent hashes MUST be more specific than-->
+<!--                    the range where the collison occurred.-->
+<!--                    Alternately, a node MAY choose to-->
+<!--                    immediately send according CSNPs, PSNPs or flood the LSPs that have been detected-->
+<!--                    as not matching the merkle hashes. Sending CSNPs or immediate flooding-->
+<!--                    may be preferable if the mismatch-->
+<!--                    covers relatively few LSPs. </t>-->
 
                     <t>
-                        In case of mismatch or no computation available for a hash covering only a single node
-                        (with its pnodes) or mismatch on a hash covering less than a CSNP PDU full of fragments,
-                        a CSNP MUST be sent or alternately the node MAY choose to flood those fragments.
+                        If there is a mismatch - or no computation available - for a hash covering just a single node (with
+                        its pseudonodes), or for a hash spanning fewer fragments than a full CSNP PDU, then a CSNP MUST
+                        be sent. Alternatively, the node MAY choose to flood those specific fragments directly instead.
+
+<!--                        In case of mismatch or no computation available for a hash covering only a single node-->
+<!--                        (with its pnodes) or mismatch on a hash covering less than a CSNP PDU full of fragments,-->
+<!--                        a CSNP MUST be sent or alternately the node MAY choose to flood those fragments.-->
                     </t>
 
 
@@ -544,11 +595,16 @@
 
         <section title="HSNP PDU Format" anchor="format">
             <t>
-                HSNP PDU Format follows closely CSNP format where instead of CSNP entries the according merkle
-                hashes are propagated, i.e. the hashes incorporate strictly the same
-                fragments that are being incorporated in
-                CSNP packets. Start and End System IDs do not include pseudo node bytes as those are subsumed
-                implicitly.
+<!--                HSNP PDU Format follows closely CSNP format where instead of CSNP entries the according merkle-->
+<!--                hashes are propagated, i.e. the hashes incorporate strictly the same-->
+<!--                fragments that are being incorporated in-->
+<!--                CSNP packets. Start and End System IDs do not include pseudo node bytes as those are subsumed-->
+<!--                implicitly.-->
+
+                The HSNP PDU format closely follows the CSNP format. Instead of CSNP entries, it carries the
+                corresponding Merkle hashes - which cover exactly the same fragments that would appear in CSNP packets.
+                The Start and End System IDs exclude pseudonode bytes, as those are implicitly included within the
+                ranges.
             </t>
 
             <figure>
@@ -570,10 +626,17 @@
 ]]></artwork>
             </figure>
 
-            <t> Start and End System IDs are or the usual ID Length and indicate, just like CSNP do,
-                the range of fragments that the HSNP covers with the difference that all pnodes of
-                the systems are implied in the range. Start and End System ID are inclusive, i.e.
-                the fragments of both the start and the end system ID are included.
+            <t>
+                The Start and End System IDs use the standard ID length and indicate the range of fragments covered by
+                the HSNP, just like CSNPs do. The key difference is that all pseudonodes of the systems within this
+                range are implicitly included. Both the Start and End System IDs are inclusive, meaning fragments from
+                both endpoints are part of the range.
+
+
+<!--                Start and End System IDs are or the usual ID Length and indicate, just like CSNP do,-->
+<!--                the range of fragments that the HSNP covers with the difference that all pnodes of-->
+<!--                the systems are implied in the range. Start and End System ID are inclusive, i.e.-->
+<!--                the fragments of both the start and the end system ID are included.-->
             </t>
 
             <t>
@@ -595,7 +658,7 @@
         </figure>
 
             <t>Range of LSPs that are  included in the hash. Range Start and Range End System ID are inclusive, i.e.
-                the fragments of both the start and the end system ID are included.  </t>
+                the fragments of both the start and the end system ID are contained within the range.  </t>
             <t>
                 Merkle hash consists of 6 bytes of the 48-bit computed hash of all fragments covered
                 by the range.
@@ -613,24 +676,35 @@
         <section title="Example">
 
 
-            <t>An example will serve well here. We limit ourselves in the examples to consideration of a
-                LSDB with 512 nodes with system identifiers of 1000.0000.00 &lt;2 digits node-id&gt; each holding
-                32 fragments
-                numbered 0 to 31.
-                We leave the uneven node identifiers out to have some "holes" in the numbering to hit some corner
-                cases in further examples.
-                We disregard the pseudo node byte as simply another byte of system identifier since it does not
-                contribute
-                further details to the scheme.
+            <t>An example will clarify things further. Consider an LSDB with 512 nodes, each having a system ID of
+                1000.0000.00&lt;2 digits node-id&gt; and holding 32 fragments numbered 0 - 31. We skip uneven node
+                identifiers to create intentional "holes" in the numbering.
+                The pseudonode byte is treated simply as part of the system ID, since it doesn't affect the
+                scheme itself.
+
+<!--                An example will serve well here. We limit ourselves in the examples to consideration of a-->
+<!--                LSDB with 512 nodes with system identifiers of 1000.0000.00 &lt;2 digits node-id&gt; each holding-->
+<!--                32 fragments-->
+<!--                numbered 0 to 31.-->
+<!--                We leave the uneven node identifiers out to have some "holes" in the numbering to hit some corner-->
+<!--                cases in further examples.-->
+<!--                We disregard the pseudo node byte as simply another byte of system identifier since it does not-->
+<!--                contribute-->
+<!--                further details to the scheme.-->
 
             </t>
 
             <t>
-                In a stable state we could expect a reasonable compression
-                with the following 128 "first order" leaves (each holding 2 systems worth
-                of fragments, hence 64 fragments) and thus generating 512 / (2 * 70) ~ 4 packets.
-                First of the  "first order" packets
-                will look roughly like this
+                In a stable state, reasonable compression can deliver 128 "first-order" leaves - each containing fragments
+                from 2 systems (64 fragments total) - requiring roughly 512 / (2 * 70) ~ 4 packets. The first of these
+                "first-order" packets would look approximately like this:
+
+
+<!--                In a stable state we could expect a reasonable compression-->
+<!--                with the following 128 "first order" leaves (each holding 2 systems worth-->
+<!--                of fragments, hence 64 fragments) and thus generating 512 / (2 * 70) ~ 4 packets.-->
+<!--                First of the  "first order" packets-->
+<!--                will look roughly like this-->
             </t>
 
             <figure anchor="first-order">
@@ -659,11 +733,18 @@
 ]]></artwork>
             </figure>
 
-            <t>Based on a local decision a node can start to further compress the HSNPs until
-                in most extreme case it will send just one packet full of hashes. This will divide
-                in our case 512 nodes across 70 hashes (since all of those have same amount of fragments
-                for simplicity reason). This ends up being about 8 nodes per hash (equal to 8 * 32 fragments)
-                and the packet will look as following.</t>
+            <t>
+<!--                Based on a local decision a node can start to further compress the HSNPs until-->
+<!--                in most extreme case it will send just one packet full of hashes. This will divide-->
+<!--                in our case 512 nodes across 70 hashes (since all of those have same amount of fragments-->
+<!--                for simplicity reason). This ends up being about 8 nodes per hash (equal to 8 * 32 fragments)-->
+<!--                and the packet will look as following.-->
+
+                Based on local decisions, a node can further compress HSNPs until - in the most extreme case - it sends just
+                one packet full of hashes. In our example with 512 nodes, this divides them across 70 hashes (assuming
+                equal fragment counts for simplicity), resulting in about 8 nodes per hash (equivalent to 8 * 32
+                fragments). The resulting packet would look like this:
+            </t>
 
             <figure anchor="second-order">
                 <artwork align="center" name="" type="" alt=""><![CDATA[
@@ -694,44 +775,90 @@
 
 
         <section title="IS-IS Scale Envelope Considerations" toc="default" anchor="envelope">
-            <t>
-                As first, obvious observation, HSNPs are of negligible value on small networks of tens of nodes
-                and hundreds of fragments. Arguably, perfectly correctly implemented flooding is enough at any size (which is
-                a very optimistic assumption historically speaking) and CSNPs are unnecessary overhead built into
-                the protocol although practically speaking they contributed largely to the stability of the protocol
-                deployments over years.
-                The larger the network becomes the higher the cost of link flap or node restart and the higher
-                the steady state cost of issuing periodic CSNPs and hence HSNP feature can stretch the scale of IS-IS
-                by a significant degree.
-            </t>
-
-            <t>If we start from the assumption that we want to push IS-IS to its practical limit we realize
-                that in deployment we have to contend with the limit of what comprises practically viable
-                flooding rate generated by fragment refreshes and database synchronization.
-                Path computations still play a role but
-                they can be much better deferred and take advantage of techniques like dampening and parallelization so
-                we disregard their impact here unless we deal with pathological cases of 1E6 nodes in a chain
-                with 1 fragment
-                each. Hence, with more realistic assumption of something like 50E3 nodes and 1E6 fragments
-                we are at maximum configured lifetime in the realms of
-                1E6/2^16 fragments being refreshed per second and thus generating about 15 packets per
-                second load per interface (disregarding any flood reduction attempts using techniques like
-                <xref target="ID.draft-ietf-lsr-distoptflood-11"/>). Additionally, 1E6 fragments generate
-                about 10E3 CSNP packets on prevalent interface MTUs and thus during LSDB synchronization, to
-                achieve something in the order of relatively lame 120 seconds LSDB sync up we would have to contend with a
-                flooding rate of roughly 80 CSNPs per seconds. Multiplied that by an envelope of 16E3 desirable interfaces
-                we look at a sustained peak flooding rate to the control plane of somewhere around 1.5E6 packets
-                per second in the system, something that is at least an order of magnitude outside the envelope of any fast flooding
-                technique and power available for a on-system distributed control plane. Assuming maximum compression
-                using HSNP we are however in the order of one additional packet on top of the flooding caused by
-                refreshes. This leaves the 15 * 16E3 ~ 2.4E5 flooding rate to be shouldered by reduction and
-                fast flooding techniques. Not an easy task but within the realm of the possible.
-            </t>
+<!--            <t>-->
+<!--                As first, obvious observation, HSNPs are of negligible value on small networks of tens of nodes-->
+<!--                and hundreds of fragments. Arguably, perfectly correctly implemented flooding is enough at any size (which is-->
+<!--                a very optimistic assumption historically speaking) and CSNPs are unnecessary overhead built into-->
+<!--                the protocol although practically speaking they contributed largely to the stability of the protocol-->
+<!--                deployments over years.-->
+<!--                The larger the network becomes the higher the cost of link flap or node restart and the higher-->
+<!--                the steady state cost of issuing periodic CSNPs and hence HSNP feature can stretch the scale of IS-IS-->
+<!--                by a significant degree.-->
+<!--                </t>-->
 
             <t>
-                With the above considerations it should become clear that a mixture of fast flooding, flood reduction
-                and HSNP features will be critical to extend the deployable envelope of IS-IS given the ever-increasing
-                deployment of the protocol.
+                HSNPs provide negligible benefit in small networks with only tens of nodes and hundreds of fragments.
+                Perfect flooding would theoretically suffice at any scale (though history shows this is too optimistic), and
+                even CSNPs represent under such assumptions
+                protocol overhead only - yet they have significantly contributed to IS-IS stability in real
+                deployments.
+                </t>
+            <t>
+                As networks grow larger, the costs of link flaps, node restarts, and periodic CSNP exchanges increase
+                substantially. HSNPs can significantly extend IS-IS scalability in these scenarios.
+            </t>
+
+
+
+<!--            <t>-->
+<!--                If we start from the assumption that we want to push IS-IS to its practical limit we realize-->
+<!--                that in deployment we have to contend with the limit of what comprises practically viable-->
+<!--                flooding rate generated by fragment refreshes and database synchronization.-->
+<!--                Path computations still play a role but-->
+<!--                they can be much better deferred and take advantage of techniques like dampening and parallelization so-->
+<!--                we disregard their impact here unless we deal with pathological cases of 1E6 nodes in a chain-->
+<!--                with 1 fragment-->
+<!--                each. -->
+<!--                Hence, with more realistic assumption of something like 50E3 nodes and 1E6 fragments-->
+<!--                we are at maximum configured lifetime in the realms of-->
+<!--                1E6/2^16 fragments being refreshed per second and thus generating about 15 packets per-->
+<!--                second load per interface (disregarding any flood reduction attempts using techniques like-->
+<!--                <xref target="ID.draft-ietf-lsr-distoptflood-11"/>). Additionally, 1E6 fragments generate-->
+<!--                about 10E3 CSNP packets on prevalent interface MTUs and thus during LSDB synchronization, to-->
+<!--                achieve something in the order of relatively lame 120 seconds LSDB sync up we would have to contend with a-->
+<!--                flooding rate of roughly 80 CSNPs per seconds. Multiplied that by an envelope of 16E3 desirable interfaces-->
+<!--                we look at a sustained peak flooding rate to the control plane of somewhere around 1.5E6 packets-->
+<!--                per second in the system, something that is at least an order of magnitude outside the envelope of any fast flooding-->
+<!--                technique and power available for a on-system distributed control plane. Assuming maximum compression-->
+<!--                using HSNP we are however in the order of one additional packet on top of the flooding caused by-->
+<!--                refreshes. This leaves the 15 * 16E3 ~ 2.4E5 flooding rate to be shouldered by reduction and-->
+<!--                fast flooding techniques. Not an easy task but within the realm of the possible.-->
+
+            <t>
+                To push IS-IS to its practical limits, we must account for flooding rates driven by fragment refreshes
+                and LSDB synchronization. Path computation impacts can be deferred - bare pathological scenarios -
+                by using dampening and parallelization,
+                and thus we focus on realistic scenarios in the order of 50,000 nodes and 1 million fragments.
+            </t>
+            <t>
+                At maximum configured lifetime, this generates ~15 packets/second per interface from refreshes (1M/65K
+                fragments/second), plus ~10,000 CSNP packets for full LSDB sync.
+            </t>
+            <t>
+                Achieving a modest 120-second sync
+                requires ~80 CSNPs/second, and across 16,000 interfaces, that represents a peak of 1.5 million
+                packets/second - far
+                beyond current fast-flooding capabilities.
+                We disregard here further techniques like <xref target="ID.draft-ietf-lsr-distoptflood-11"/>, 
+                especially since they do not improve CSNP scale.
+            </t>
+
+            <t>
+
+                With maximum HSNP compression, however, sync overhead drops to roughly one additional packet beyond
+                refresh flooding, leaving ~250,000 packets/second (15 * 16K) to be handled by fast flooding and
+                flood reduction
+                techniques - a challenging but feasible target.
+            </t>
+
+
+            <t>
+                The considerations above make it clear that combining fast flooding, flood reduction, and HSNP features
+                will be essential in extending IS-IS scalability as deployments continue to grow larger.
+
+<!--                With the above considerations it should become clear that a mixture of fast flooding, flood reduction-->
+<!--                and HSNP features will be critical to extend the deployable envelope of IS-IS given the ever-increasing-->
+<!--                deployment of the protocol.-->
             </t>
 
         </section>
@@ -740,121 +867,227 @@
 
             <section title="Maximum Advisable Hash Coverage">
                 <t>
-                Although the mechanism can be applied to the point where a single merkle hash represents
-                an arbitrarily large database, such a single hash is not advisable. Limiting hash coverage
-                to the point where at maximum a single full HSNP packet is far more preferable.
+<!--                Although the mechanism can be applied to the point where a single merkle hash represents-->
+<!--                an arbitrarily large database, such a single hash is not advisable. Limiting hash coverage-->
+<!--                to the point where at maximum a single full HSNP packet is far more preferable.-->
 
+                    Although the mechanism can theoretically use a single Merkle hash to represent an arbitrarily large
+                    database, such an approach is not advisable. Instead, it is far preferable to limit hash coverage so
+                    that at minimum one full HSNP packet is required.
                 </t>
+
                 <t>
-                    Generally, limiting compression to the point where maximum of a dozen HSNP packets cover the database
-                    can be practically speaking better than enough. As practical example a single HSNP packet on
-                    a 1E3 fragments database compressed to maximum extent
-                    covers with each hash ~140 fragments. Allowing more HSNP packets will lead to less disaggregation
-                    on LSDB changes obviously, lower collision possibility further (which in 1E3 sized LSDB is however
-                    vanishingly small with a single hash already) and e.g.
-                    10 HSNP packets compared to 100 CSNP packets covering the LSDB normally
-                    is a compression factor of 10x already.
+                    In practice, limiting compression so that a maximum of about a dozen HSNP packets covers the entire
+                    database is usually sufficient. For example, a single maximally compressed HSNP packet for a
+                    1,000 - fragment database covers ~140 fragments per hash. Allowing for more HSNP packets (e.g., 10 instead of
+                    100 CSNPs) still provides a 10x compression factor, reduces disaggregation needs during LSDB changes, and
+                    further lowers the already negligible collision risk (which in 1K sized LSDB is however
+                    vanishingly small with a single hash already).
+
+
+<!--                    Generally, limiting compression to the point where maximum of a dozen HSNP packets cover the database-->
+<!--                    can be practically speaking better than enough. As practical example a single HSNP packet on-->
+<!--                    a 1E3 fragments database compressed to maximum extent-->
+<!--                    covers with each hash ~140 fragments. Allowing more HSNP packets will lead to less disaggregation-->
+<!--                    on LSDB changes obviously, lower collision possibility further (which in 1E3 sized LSDB is however-->
+<!--                    vanishingly small with a single hash already) and e.g.-->
+<!--                    10 HSNP packets compared to 100 CSNP packets covering the LSDB normally-->
+<!--                    is a compression factor of 10x already.-->
                 </t>
             </section>
 
             <section title="Hash Collision Probabilities" anchor="collisions">
+<!--                <t>-->
+<!--                    As first observation it is worth noting that even with CSNPs or PSNPs IS-IS does-->
+<!--                    harbor a corner case where LSDB may not end up synchronized, especially on a node restart.-->
+<!--                    In simple terms, issuing a fragment with the same sequence number and checksum'ed content that-->
+<!--                    collides with a previously sent fragment with a dissimilar content that generates however-->
+<!--                    the same 16 bit fletcher checksum will go undetected until the fragment lifetime expires.-->
+<!--                    The likelihood of such an event is largely determined by the assumptions as to likelihood-->
+<!--                    of a fletcher checksum colliding. A simple assumption we will work from is that values of-->
+<!--                    fletcher-->
+<!--                    checksums are uniformly likely, even if the content varies by relatively few bytes.-->
+<!--                    With that assumption, the-->
+<!--                    likelihood of such event is simply 1/2^16 or 0.001%. This will allow for further-->
+<!--                    comparisons with HSNP fletcher collision likelihood.-->
+<!--                    </t>-->
                 <t>
-                    As first observation it is worth noting that even with CSNPs or PSNPs IS-IS does
-                    harbor a corner case where LSDB may not end up synchronized, especially on a node restart.
-                    In simple terms, issuing a fragment with the same sequence number and checksum'ed content that
-                    collides with a previously sent fragment with a dissimilar content that generates however
-                    the same 16 bit fletcher checksum will go undetected until the fragment lifetime expires.
-                    The likelihood of such an event is largely determined by the assumptions as to likelihood
-                    of a fletcher checksum colliding. A simple assumption we will work from is that values of
-                    fletcher
-                    checksums are uniformly likely, even if the content varies by relatively few bytes.
-                    With that assumption, the
-                    likelihood of such event is simply 1/2^16 or 0.001%. This will allow for further
-                    comparisons with HSNP fletcher collision likelihood.
+
+
+                    Even with CSNPs or PSNPs, IS-IS has a corner case where LSDB synchronization can fail - particularly
+                    during node restarts. In simple terms, if a new fragment has the same sequence number and
+                    different content but an identical 16-bit Fletcher
+                    checksum, the collision goes undetected until the fragment expires.
                 </t>
                 <t>
-                    HSNP generates 48 bit fletcher checksums over what is basically PSNP data of a fragment
-                    and ISIS length of the fragment.
-                    We will be concerned about the likelihood of two fragments being at the same time generating
-                    the same fletcher checksum while they are covered by the same HSNP since such a constellation
-                    will make both fragments "disappear" due to the nature of the XOR checksum. Any collision
-                    that is not the in the node range hash is irrelevant.
+                    Assuming Fletcher checksums are uniformly distributed (even with minor content changes), the
+                    collision probability for that case is 1/2**16 ~ 0.0015%. This baseline enables meaningful
+                    comparisons with HSNP
+                    Fletcher collision probabilities.
 
                 </t>
-                <t> One could further argue that XOR'ing several hashes can produce the same value as another
-                set of XOR'ed hashes but the likelihood of the sets having the same combination of modulo
-                1 sums on all of the 48 bits is so small (somewhere in the order of 1E-15)
-                    that we don't consider it further. </t>
+                <t>
+<!--                    HSNP generates 48 bit fletcher checksums over what is basically PSNP data of a fragment-->
+<!--                    and ISIS length of the fragment.-->
+<!--                    We will be concerned about the likelihood of two fragments being at the same time generating-->
+<!--                    the same fletcher checksum while they are covered by the same HSNP since such a constellation-->
+<!--                    will make both fragments "disappear" due to the nature of the XOR checksum. Any collision-->
+<!--                    that is not the in the node range hash is irrelevant.-->
 
-                <t>Probability statistics in not trivial to deal with the generic case of collisions (though it delivers based on
-                    birthday paradox first ballpark number of 0.18% collision likelihood in
-                    48 bit numbers colliding in 1E6 sized set, i.e. a single hash). Intuitively we would expect that using
-                    64 bit numbers with resulting birthday paradox probability of 0.0000027% would be necessary.
-                    But with intention of mirroring operational realities as close as possible, we fall on extensive
-                    simulations of refreshes on a vast network of 50E3 nodes with 1E6 fragments under assumptions
-                    of node IDs differing in 3 bytes only, maximum fragment lifetime and protocol checksums
-                    on each sequence number refresh being a random value. We change the length of the packet in
-                    5% of all refreshes only to mirror a rather stable network. 32 networks, each running for 2 years
-                    are used to derive the numbers.
+                    HSNP uses 48-bit Fletcher checksums over what is essentially PSNP data for a fragment plus the
+                    fragment's IS-IS length. The key concern is the probability that two fragments - covered by the same
+                    hash - generate the same Fletcher checksum simultaneously. This would cause both fragments to
+                    "disappear" due to the XOR checksum nature. Collisions occurring for fragments in 
+                    different node range hashes are irrelevant.
+
                 </t>
                 <t>
-                    The absolute number of collisions in 36E9 refreshes over set of all fragments
-                    is in the order of 200-300 collisions or
-                    6E-9 probability or expressed otherwise about 3 occurrences a year. Lifetime of such a
-                    collision shows on simulations as average of about 10 hours. The 6E-9 being significantly
-                    lower than the 1E-3 predicted by birthday paradox is likely to be attributed to the fact
-                    that node id can be seen as an always differing "salt" to the checksums and hence "pre-partitioning"
-                    the space of probabilities.
-                </t>
-                <t>
-                    The situation becomes more interesting and practically relevant
-                    once we start to consider how many collision occur in
-                    the highest compression packet with 70 hashes. This roughly halves the amount of collisions
-                    so we can expect in such a large network about 1 collision per year. Once we go to the assumption
-                    that we don't use maximum compression but limit it to 70 HSNP packets we end up with about 1 collision
-                    per 10 years.
-                </t>
+                    One might argue that XORing different sets of hashes could produce the same result, but the
+                    probability of two distinct sets having identical modulo-1 sums across all 48 bits is vanishingly
+                    small (~1E-15). This scenario is not considered further.
+                    </t>
+<!--                <t>-->
+<!--                    One could further argue that XOR'ing several hashes can produce the same value as another-->
+<!--                set of XOR'ed hashes but the likelihood of the sets having the same combination of modulo-->
+<!--                1 sums on all of the 48 bits is so small (somewhere in the order of 1E-15)-->
+<!--                    that we don't consider it further.-->
+<!--                </t>-->
 
                 <t>
-                Surprisingly enough, going to 64 bit drops the total number of collisions by about 50% but under the
-                assumptions of a single full HSNP packet the outcome is measurably worse. This is based on the fact
-                taht 64 bit collision hashes occur much "closer together" on the database, something for which we lack an explanation.
+                    Collision probability analysis is complex for the general case, though the birthday paradox gives a
+                    rough estimate of 0.18% collision likelihood for 48-bit hashes in a 1M - sized set. While 64-bit
+                    hashes would intuitively reduce this to ~0.0000027%, we instead rely on extensive simulations that
+                    mirror real-world conditions.
+</t>
+                <t>
+                    These simulations model 50,000-node networks with 1M fragments, assuming node IDs differ by only 3
+                    bytes, maximum fragment lifetimes, random protocol checksums on fragment refresh, and packet length changes
+                    in just 5% of refreshes to reflect network stability. Results are derived from 32 networks running
+                    for 2 years each.
+                   </t>
+
+<!--                <t>-->
+<!--                    Probability statistics in not trivial to deal with the generic case of collisions (though it delivers based on-->
+<!--                    birthday paradox first ballpark number of 0.18% collision likelihood in-->
+<!--                    48 bit numbers colliding in 1E6 sized set, i.e. a single hash). Intuitively we would expect that using-->
+<!--                    64 bit numbers with resulting birthday paradox probability of 0.0000027% would be necessary.-->
+<!--                    But with intention of mirroring operational realities as close as possible, we fall on extensive-->
+<!--                    simulations of refreshes on a vast network of 50E3 nodes with 1E6 fragments under assumptions-->
+<!--                    of node IDs differing in 3 bytes only, maximum fragment lifetime and protocol checksums-->
+<!--                    on each sequence number refresh being a random value. We change the length of the packet in-->
+<!--                    5% of all refreshes only to mirror a rather stable network. 32 networks, each running for 2 years-->
+<!--                    are used to derive the numbers.-->
+<!--                </t>-->
+                <t>
+                    Across 64 years of simulation and resulting
+                    36 billion refreshes of all fragments, we observed only 200 - 300 collisions on the hash of the
+                    whole set - a probability of 6E-9,
+                    or roughly 3 occurrences per year. These collisions have an average lifetime of about 10 hours. This
+                    rate is orders of magnitude lower than the birthday paradox prediction of 0.1%, likely because node
+                    IDs act as a consistent "salt," effectively pre-partitioning the probability space.
+
+<!--                    The absolute number of collisions in 36E9 refreshes over set of all fragments-->
+<!--                    is in the order of 200-300 collisions or-->
+<!--                    6E-9 probability or expressed otherwise about 3 occurrences a year. Lifetime of such a-->
+<!--                    collision shows on simulations as average of about 10 hours. The 6E-9 being significantly-->
+<!--                    lower than the 1E-3 predicted by birthday paradox is likely to be attributed to the fact-->
+<!--                    that node id can be seen as an always differing "salt" to the checksums and hence "pre-partitioning"-->
+<!--                    the space of probabilities.-->
                 </t>
                 <t>
-                Obviously, a very, very conservative, not to say paranoid implementation can easily
-                monitor the LSDB for presence of colliding fletcher hashes on the fragments and simply prevent
-                such fragments being included in a single HSNP hash which will force the receiving node
-                to consider separate hashes without a collision in them. This is sufficient to prevent
-                any kind of "misses" when using HSNP to synchronize the databases.</t>
+                    The situation becomes more practically relevant when considering collisions within a single
+                    highest-compression packet containing 70 hashes. This roughly halves the collision rate, leading to
+                    about 1 collision per year in such a large network. If compression is instead limited to 70 HSNP
+                    packets (rather than maximum compression), the rate drops further to approximately 1 collision per
+                    10 years.
+                    </t>
+
+<!--                <t>-->
+<!--                    The situation becomes more interesting and practically relevant-->
+<!--                    once we start to consider how many collision occur in-->
+<!--                    the highest compression packet with 70 hashes. This roughly halves the amount of collisions-->
+<!--                    so we can expect in such a large network about 1 collision per year. Once we go to the assumption-->
+<!--                    that we don't use maximum compression but limit it to 70 HSNP packets we end up with about 1 collision-->
+<!--                    per 10 years.-->
+<!--                </t>-->
+
                 <t>
-                    Other techniques are obviously possible like walking the database at slow speed and sending
-                    CSNPs. Given a 1E6 fragments database generates 10E3 such packets the chance of this preventing a
-                    collision during its 10 hours time is probably extremely small.
+                    Surprisingly, switching to 64-bit hashes reduces total collisions by only about 50%, and under
+                    maximum compression (single full HSNP packet), the results are actually measurably worse. This
+                    appears to be because 64-bit collisions tend to cluster more closely together in the database - a
+                    phenomenon we currently lack an explanation for.
+
+<!--                Surprisingly enough, going to 64 bit drops the total number of collisions by about 50% but under the-->
+<!--                assumptions of a single full HSNP packet the outcome is measurably worse. This is based on the fact-->
+<!--                taht 64 bit collision hashes occur much "closer together" on the database, something for which we lack an explanation.-->
+                </t>
+
+                <t>
+                    A highly conservative (not to say paranoid) implementation can simply monitor the LSDB for colliding
+                    Fletcher hashes among fragments and exclude them from the same HSNP hash. This forces receiving
+                    nodes to use separate collision-free hashes instead. Such an approach completely eliminates any risk
+                    of synchronization misses when using HSNPs.
+                </t>
+
+<!--                <t>Obviously, a very, very conservative, not to say paranoid implementation can easily-->
+<!--                monitor the LSDB for presence of colliding fletcher hashes on the fragments and simply prevent-->
+<!--                such fragments being included in a single HSNP hash which will force the receiving node-->
+<!--                to consider separate hashes without a collision in them. This is sufficient to prevent-->
+<!--                any kind of "misses" when using HSNP to synchronize the databases.</t>-->
+                <t>
+                    Other techniques are possible, such as slowly walking the database and sending CSNPs. However, for a
+                    1M-fragment database that generates 10,000 such CSNP packets, the chance of this detecting a collision
+                    during its 10-hour window is likely extremely small.
+<!--                    -->
+<!--                    Other techniques are obviously possible like walking the database at slow speed and sending-->
+<!--                    CSNPs. Given a 1E6 fragments database generates 10E3 such packets the chance of this preventing a-->
+<!--                    collision during its 10 hours time is probably extremely small.-->
                 </t>
             </section>
 
             <section title="Impact of Packet Losses">
                 <t>
-                    Hashes covering large numbers of fragments will be more susceptible to packet losses since each loss
-                    covers a much larger part of the LSDB during synchronization. An implementation can choose the
-                    node ranges covered by HSNPs in any way it desires but a consideration should be the
+                    Hashes covering large numbers of fragments are more vulnerable to packet losses, as each lost packet
+                    affects a much larger portion of the LSDB during synchronization. Implementations can choose HSNP
+                    node ranges freely, but should balance maximum compression against "good enough" compression that
+                    reduces both collision risk and vulnerability to unavoidable packet drops.
+
+<!--                    Hashes covering large numbers of fragments will be more susceptible to packet losses since each loss-->
+<!--                    covers a much larger part of the LSDB during synchronization. An implementation can choose the-->
+<!--                    node ranges covered by HSNPs in any way it desires but a consideration should be a balance-->
+<!--                    between maximum reduction and a compression "good enough" that is less prone to collisions and-->
+<!--                    unavoidable packet losses.-->
                 </t>
             </section>
 
             <section title="Decompression and Caching/Comparison Optimizations">
                 <t>
-                    As mentioned above a node may apply many strategies to speed up decompression.
-                    E.g. LSPs missing in HSNPs as not covered by ranges are clearly "missing in action" and can
-                    be reflooded. As another example,
-                    small ranges where merkle mismatched can generate CSNPs, PSNPs or lead to flooding immediately.
+<!--                    As mentioned above a node may apply many strategies to speed up decompression.-->
+<!--                    E.g. LSPs missing in HSNPs as not covered by ranges are clearly "missing in action" and can-->
+<!--                    be reflooded. As another example,-->
+<!--                    small ranges where merkle mismatched can generate CSNPs, PSNPs or lead to flooding immediately.-->
+
+                    As mentioned earlier, nodes can use various strategies to accelerate decompression. For example,
+                    LSPs missing from HSNPs (those not covered by any ranges) are clearly absent and can be immediately
+                    reflooded. Similarly, small mismatched Merkle ranges can trigger immediate CSNPs, PSNPs, or direct
+                    flooding.
+
                 </t>
                 <t>
-                    Caching of hashes can be applied at many levels since the merkle hashes suggested here are
-                    easily computed. Obviously keeping a hash on all fragments of a node and its pnodes is the
-                    simplest and most relevant candidate but other resolutions are easily achievable.
-                    Even if certain elements must be removed e.g. on receiving a
-                    range &lt;A -- B&gt; while the node already holds &lt; A -- B &amp; next-after-B&gt; the hash can be simply
-                    adjusted by removing 'next-after-B' node merkle hash from the cached result.
+<!--                    Caching of hashes can be applied at many levels since the merkle hashes suggested here are-->
+<!--                    easily computed. Obviously keeping a hash on all fragments of a node and its pnodes is the-->
+<!--                    simplest and most relevant candidate but other resolutions are easily achievable.-->
+<!--                    Even if certain elements must be removed e.g. on receiving a-->
+<!--                    range &lt;A &#45;&#45; B&gt; while the node already holds &lt; A &#45;&#45; B &amp; next-after-B&gt; the hash can be simply-->
+<!--                    adjusted by removing 'next-after-B' node merkle hash from the cached result.-->
+
+                    Caching of hashes can be applied at many levels. The
+                    simplest and most useful approach is maintaining a hash for all fragments of a node and its
+                    pseudonodes, though other granularities work equally well. Even when adjusting for changes - such as
+                    receiving a range &lt; A - B &gt; while having cached &lt; A - B &amp; next-after-B &gt;
+                    - the cached hash can be quickly updated by
+                    simply XORing out the next-after-B node Merkle hash.
+
                 </t>
             </section>
 
@@ -883,7 +1116,7 @@
         <section title="Acknowledgement" toc="default">
             <t>
 
-                People have been talking about ?compressing CSNPs? for a very long time, reportedly going back to when
+                People have been talking about "compressing CSNPs" for a very long time, reportedly going back to when
                 Radia Perlman and an insomniac Dave Katz were walking the halls discussing it. Recent attempts to scale
                 the protocol much further have made it worthwhile to turn this idea into a standardized, practical
                 engineering solution.
