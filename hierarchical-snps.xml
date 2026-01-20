@@ -38,7 +38,7 @@
 <?rfc sortrefs="yes" ?>
 <?rfc compact="yes" ?>
 <?rfc subcompact="no" ?>
-<rfc category="exp" docName="draft-prz-lsr-hierarchical-snps-02" ipr="trust200902">
+<rfc category="exp" docName="draft-prz-lsr-hierarchical-snps-03" ipr="trust200902">
 
     <!-- ***** FRONT MATTER ***** -->
 
@@ -389,7 +389,6 @@
 
         <section title="Hash Function for a Fragment">
             <t>
-
                 Each fragment generates a 48-bit Fletcher checksum, which is a straightforward extension of the existing
                 32-bit standard. For performance reasons, this Fletcher variant replaces the modulo operation with the
                 common approximation of a simple bit shift. The choice of a 48-bit checksum is based on the analysis provided in
@@ -510,7 +509,10 @@
                     the advertised ranges, or between those ranges and the HSNP's Start and End System IDs - MUST be
                     treated as missing. Consequently, if a node detects that it holds Merkle hashes for LSPs that are
                     not covered by a received HSNP, it MUST behave as it would in the same situation with a CSNP, namely
-                    by flooding the missing LSPs.
+                    by flooding the missing LSPs. Alternately, instead of leaving a "hole" in the packet range, a
+                    HSNP can be included with Merkle hash being set to 0 (which will generate a guaranteed miss) and
+                    interpreted as nodes in the range being present but not covered by HSNP compression anymore.
+                    The node sending such an entry SHOULD send according CSNPs before the according HSNP packet.
 
 
 <!--                    Any node IDs not covered by ranges in the packet either due to "holes" between the advertised-->
