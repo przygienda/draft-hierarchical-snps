@@ -454,7 +454,6 @@
 <!--                compute their hash by XOR'ing all included more specific ranges if such hashes are available.-->
             </t>
 
-
             <!--
             <t>
                 Ultimately, and fairly obviously, third order hash uses second order hash logic to keep its hash.
@@ -509,10 +508,17 @@
                     the advertised ranges, or between those ranges and the HSNP's Start and End System IDs - MUST be
                     treated as missing. Consequently, if a node detects that it holds Merkle hashes for LSPs that are
                     not covered by a received HSNP, it MUST behave as it would in the same situation with a CSNP, namely
-                    by flooding the missing LSPs. Alternately, instead of leaving a "hole" in the packet range, a
+                    by flooding the missing LSPs.
+
+                    <!-- Alternately, instead of leaving a "hole" in the packet range, a
                     HSNP can be included with Merkle hash being set to 0 (which will generate a guaranteed miss) and
                     interpreted as nodes in the range being present but not covered by HSNP compression anymore.
                     The node sending such an entry SHOULD send according CSNPs before the according HSNP packet.
+                    Observe that in the case the receiving node computed the "real" XOR'ed HSNP hash of the fragments of such
+                    range as resulting in a 0 value, it MUST still treat the received HSNP hash as "mismatch" to prevent
+                    a stable "hole" in the database on the peer.
+
+                    -->
 
 
 <!--                    Any node IDs not covered by ranges in the packet either due to "holes" between the advertised-->
