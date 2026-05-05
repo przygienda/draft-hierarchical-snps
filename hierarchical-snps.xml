@@ -195,7 +195,7 @@
 
 
             <t>
-                To begin, in IS-IS networks we can fit just under 100 PSNP entries into the typical 1500-byte MTU frame.
+                To begin, in IS-IS networks we can fit just under 100 SNP entries into the typical 1500-byte MTU frame.
                 This is the consequence of each CSNP entry including the Node ID, Fragment number, Sequence number, Checksum, and
                 Lifetime fields -- totaling 7 + 1 + 4 + 2 + 2 = 16 bytes per entry.
             </t>
@@ -571,14 +571,15 @@ Hash $6EB348F808C9AE4E
                     does not match after recomputation or comparison, it MUST
                     immediately send HSNPs with Merkle hashes covering the mismatched ranges. These new hashes MUST be
                     more specific than the range where the mismatch occurred.
-                    </t>
+                </t>
                 <t>
 
                     Alternatively, instead of more specific HSNP hashes, 
-                    a node MAY choose to send corresponding CSNPs, PSNPs, or flood the mismatched LSPs
-                    directly. Sending CSNPs or flooding immediately may be preferable when the mismatch affects only a
-                    small number of LSPs.
-                    </t>
+                    a node MAY choose to send corresponding CSNPs
+                    directly. Sending CSNPs immediately may be preferable when the mismatch affects only a
+                    small number of LSPs. In case the mismatched hash has no matching fragments in the local
+                    database the node MUST fall back onto CSNPs as well.
+                </t>
 
 <!--                <t>-->
 <!--                    -->
@@ -597,7 +598,8 @@ Hash $6EB348F808C9AE4E
                         If there is a mismatch - or no computation available - for a hash covering just a single node (with
                         its pseudonodes), or for a hash spanning fewer fragments than a full CSNP PDU, then CSNPs covering
                         all fragments of the node and its pseudonodes MUST
-                        be sent. Alternatively, the node MAY choose to flood those specific fragments directly instead.
+                        be sent. Flooding the mismatched node's fragments directly will not cover the case of missing
+                        fragments held by the sender of the hash.
 
 <!--                        In case of mismatch or no computation available for a hash covering only a single node-->
 <!--                        (with its pnodes) or mismatch on a hash covering less than a CSNP PDU full of fragments,-->
