@@ -38,13 +38,13 @@
 <?rfc sortrefs="yes" ?>
 <?rfc compact="yes" ?>
 <?rfc subcompact="no" ?>
-<rfc category="exp" docName="draft-prz-lsr-merkle-hash-packets-02" ipr="trust200902">
+<rfc category="exp" docName="draft-prz-lsr-ash-packets-00" ipr="trust200902">
 
     <!-- ***** FRONT MATTER ***** -->
 
     <front>
 
-        <title>ISIS Merkle Hash Packets</title>
+        <title>ISIS Aggregated SNP Hash Packets</title>
 
         <author initials='T.' surname='Przygienda' fullname='Tony Przygienda'>
             <organization>Juniper Networks</organization>
@@ -65,13 +65,13 @@
 
         <abstract>
             <t>
-                The document presents an optional new type of database synchronization packet called a Merkle Hash Packet 
-                (MHP). When feasible,
+                The document presents an optional new type of database synchronization packet called an Aggregated
+                SNP Hash (ASH). When feasible,
                 it compresses
                 traditional SNP exchanges into a Merkle tree-like structure, which speeds up synchronization of large
                 databases and adjacency numbers while reducing the load from regular CSNP exchanges during normal
-                operation. Just like CSNPs and PSNPs Merkle Hash Packets come in two flavors, called Complete Merkle Hash Packet (CMHP)
-                and Partial Merkle Hash Packet (PMHP).
+                operation. Just like CSNPs and PSNPs, ASH packets come in two flavors, called Complete ASH (CASH)
+                and Partial ASH (PASH).
             </t>
 
 
@@ -84,30 +84,30 @@
         <section title="Introduction">
 
 <!--            <t>-->
-<!--                The document introduces an optional, new type of SNPs called Hierarchical SNP (MHP) that can-->
+<!--                The document introduces an optional, new type of SNPs called Hierarchical SNP (ASH) that can-->
 <!--                compress the traditional CSNPs exchange into a variant of merkle tree, hence-->
 <!--                allowing to support fast synchronization of large databases and adjacency numbers while-->
 <!--                lessening the load of periodic CSNP exchanges during steady state operation.-->
 
-<!--                Mixture of parallel flooding, exchanging of CSNPs and a fitting MHP compression strategy-->
+<!--                Mixture of parallel flooding, exchanging of CSNPs and a fitting ASH compression strategy-->
 <!--                should lead to faster database re-synchronization-->
 <!--                since only a subset of packets as compared to full scale CSNP exchange-->
-<!--                is necessary to reconcile any entropy present. When using MHPs more of unnecessary flooding can be suppressed-->
+<!--                is necessary to reconcile any entropy present. When using ASHs more of unnecessary flooding can be suppressed-->
 <!--                while the mismatched fragments will be detected with less communication overhead as compared to-->
 <!--                full CSNP exchanges.-->
 <!--            </t>-->
 
             <t>
-                The document introduces an optional new type of database synchronization packet called the Hierarchical SNP (MHP). It compresses
+                The document introduces an optional new type of database synchronization packet called the Aggregated SNP Hash (ASH). It compresses
                 traditional CSNP and SNP exchanges into a Merkle tree-like structure <xref target="MERKLE"/>,
                 enabling faster synchronization of large
                 databases and adjacency information while reducing the overhead of regular CSNP exchanges during
                 steady state
                 operation.
 
-                By combining parallel flooding, SNP exchanges, and MHP-based compression, database resynchronization
+                By combining parallel flooding, SNP exchanges, and ASH-based compression, database resynchronization
                 can be accelerated because fewer packets (not the entire CSNP set) need to be exchanged to fix
-                inconsistencies. Using MHPs also reduces unnecessary flooding and communication overhead, while still
+                inconsistencies. Using ASHs also reduces unnecessary flooding and communication overhead, while still
                 detecting mismatched fragments more efficiently than full CSNP exchanges.
             </t>
 
@@ -284,7 +284,7 @@
 
                 <t>
                     Instead or in addition to the "first level" packing a system can decide to pack "more densely".
-                    In such a mode, the MHP may include hashes that cover a much larger range than the
+                    In such a mode, the ASH may include hashes that cover a much larger range than the
                     first-level hashes. How this denser packing is implemented is left up to the specific implementation.
                     </t>
 
@@ -326,7 +326,7 @@
                     processing overhead.
                 </t>
                 <t>Even though a fully stable network could, in theory, be represented by a single hash covering the
-                    entire LSDB, doing so is neither desirable nor beneficial. Since an MHP packet must be sent anyway,
+                    entire LSDB, doing so is neither desirable nor beneficial. Since an ASH packet must be sent anyway,
                     it is much better to fill it with around 70 node range hashes. This approach limits the amount of
                     decompression required if a collision occurs within one of those ranges and also reduces the risk of
                     hash collisions, as discussed in <xref target="collisions"/>.
@@ -335,8 +335,8 @@
 
 
                 <t>
-                    In summary, a node should avoid compressing beyond the point where a single MHP covers the entire
-                    database. Ideally, one MHP should contain at most about (MTU / Node Range Hash Entry Size)
+                    In summary, a node should avoid compressing beyond the point where a single ASH covers the entire
+                    database. Ideally, one ASH should contain at most about (MTU / Node Range Hash Entry Size)
                     hashes - or fewer - to keep collision probabilities low, as described in detail in <xref target="collisions"/>.
 
                 </t>
@@ -344,7 +344,7 @@
 
                 <!--
                 <t>
-                    To attempt to settle on the same ranges in MHPs an implementation of the suggested packing should let a
+                    To attempt to settle on the same ranges in ASHs an implementation of the suggested packing should let a
                     leaf that
                     drops under 50% occupancy "start robbing" system IDs from "left" of the next leaf until the current
                     leaf meets the "full condition". This is of course a recursive action that may ultimately generate
@@ -472,88 +472,88 @@ Hash $6EB348F808C9AE4E
         </section>
 
         <section title="Procedures">
-            <section title="MHP Support Negotiation">
+            <section title="ASH Support Negotiation">
                 <t>
                     IIH of nodes supporting this extension MUST include in IIH a new TLV that will indicate
-                    support for reception of MHPs.
+                    support for reception of ASHs.
                     All nodes on the adjacency MUST advertise
-                    the TLV on their IIHs, otherwise MHPs are not used.
-                    Observe that a node may very well just receive and process the MHPs and answer them
+                    the TLV on their IIHs, otherwise ASHs are not used.
+                    Observe that a node may very well just receive and process the ASHs and answer them
                     always with CSNPs necessary although this is obviously less beneficial than fully supporting
-                    sending and receiving of MHPs.
+                    sending and receiving of ASHs.
                 </t>
             </section>
 
-            <section title="Advertising and Receiving CMHPs">
+            <section title="Advertising and Receiving CASHs">
                 <t>
                     Advertising standard CSNPs is extended or replaced
-                    with CMHP advertisements when this feature is supported. Since
-                    both CSNPs and CMHPs carry range information in their headers, they can be freely mixed, depending
+                    with CASH advertisements when this feature is supported. Since
+                    both CSNPs and CASHs carry range information in their headers, they can be freely mixed, depending
                     on which level of fragment "compression" best fits the situation. In practice, sufficiently specific
                     range mismatches will naturally fall back to SNP exchanges or flooding to resolve remaining
                     differences.
 <!--                    -->
-<!--                    Advertising normal CSNPs is augmented with advertisement of MHPs when this feature is supported.-->
-<!--                    Since both CSNP and MHPs advertise "range" in their headers they can even be-->
+<!--                    Advertising normal CSNPs is augmented with advertisement of ASHs when this feature is supported.-->
+<!--                    Since both CSNP and ASHs advertise "range" in their headers they can even be-->
 <!--                    randomly mixed depending what level of "compression" of fragments is best suited to the situation-->
 <!--                    and range mismatches specific enough will end up to CSNP exchanges or flooding.-->
                 </t>
 
                 <t>
-                    The ranges in CHMP MUST be sorted based on Range Start System ID. The ranges MUST NOT overlap.
+                    The ranges in CASH MUST be sorted based on Range Start System ID. The ranges MUST NOT overlap.
                     A receiver encountering overlapping ranges MUST treat the union of the
-                    overlapping ranges as a single range with a 0 hash. Any range exceeding the CMHP range
-                    MUST be adjusted for its start and end to fit within the CMHP range and treated like a 0 hash.
+                    overlapping ranges as a single range with a 0 hash. Any range exceeding the CASH range
+                    MUST be adjusted for its start and end to fit within the CASH range and treated like a 0 hash.
                 </t>
 
                 <t>
                     Any node IDs that are not covered by the ranges in a packet - either because there are gaps between
-                    the advertised ranges, or between those ranges and the MHP's Start and End System IDs - MUST be
+                    the advertised ranges, or between those ranges and the ASH's Start and End System IDs - MUST be
                     treated as missing. Consequently, if a node detects that it holds Merkle hashes for LSPs that are
-                    not covered by a received CMHP, it MUST behave as it would in the same situation with a CSNP, namely
+                    not covered by a received CASH, it MUST behave as it would in the same situation with a CSNP, namely
                     by flooding the missing LSPs.
                     </t>
 
 
 
 <!--                    -->
-<!--                    The node sending such an entry SHOULD send according CSNPs before the according MHP packet.-->
-<!--                    Observe that in the case the receiving node computed the "real" XOR'ed MHP hash of the fragments of such-->
-<!--                    range as resulting in a 0 value, it MUST still treat the received MHP hash as "mismatch" to prevent-->
+<!--                    The node sending such an entry SHOULD send according CSNPs before the according ASH packet.-->
+<!--                    Observe that in the case the receiving node computed the "real" XOR'ed ASH hash of the fragments of such-->
+<!--                    range as resulting in a 0 value, it MUST still treat the received ASH hash as "mismatch" to prevent-->
 <!--                    a stable "hole" in the database on the peer.-->
 
 
 <!--                    Any node IDs not covered by ranges in the packet either due to "holes" between the advertised-->
-<!--                    ranges or holes between contained ranges and the Start and End System ID of the MHP MUST be considered-->
+<!--                    ranges or holes between contained ranges and the Start and End System ID of the ASH MUST be considered-->
 <!--                    as missing.-->
 <!--                    Consequently, in case a node detects that it holds Merkle hashes for LSPs that are not covered by the-->
-<!--                    received MHP, it MUST trigger the same behavior as triggered by CSNP with this condition,-->
+<!--                    received ASH, it MUST trigger the same behavior as triggered by CSNP with this condition,-->
 <!--                    i.e. flood the missing LSPs.-->
 
 
                 <t>
-                    As with CSNPs, an CMHP whose first range covers the first node in the database MUST use
+                    As with CSNPs, an CASH whose first range covers the first node in the database MUST use
                     0000.0000.0000 as the start system ID in its packet range so that missing nodes can be detected. The
-                    same rule applies at the other end of the database: an CMHP whose range covers the last node MUST
+                    same rule applies at the other end of the database: an CASH whose range covers the last node MUST
                     indicate this in a way that allows detection of any missing trailing nodes.
                 </t>
 
 <!--                    -->
-<!--                    As is the case with CSNPs the MHP containing in its first range the first node of the-->
+<!--                    As is the case with CSNPs the ASH containing in its first range the first node of the-->
 <!--                    database MUST indicate in its packet range 0000.0000.0000 as start system ID to-->
-<!--                    allow detection of missing nodes. Analogous behavior applies to MHP carrying hash-->
+<!--                    allow detection of missing nodes. Analogous behavior applies to ASH carrying hash-->
 <!--                    covering the last node of the database.-->
 
 
 <!--                <t>-->
-<!--                    When a node receives MHPs with Merkle hash ranges, it MUST either compute-->
+<!--                    When a node receives ASHs with Merkle hash ranges, it MUST either compute-->
 <!--                    and verify the hashes for the indicated ranges and in case of mismatch -->
 <!--                    send more specific hashes for that range - in other-->
 <!--                    words, "disaggregate". Disaggregation is less preferable, however, because if both sides repeatedly-->
 <!--                    do this for wide mismatched ranges, it can lead to a ping-pong effect that ultimately falls back to-->
 <!--                    full CSNP exchanges.-->
 <!--                    -->
-<!--                    In case a node receives MHPs where the merkle hash ranges are not the same, the node MUST-->
+<!--                    In case a node receives ASHs where the merkle hash ranges are not the same, the node MUST-->
 <!--                    either compute and verify the hashes over the ranges indicated or-->
 <!--                    send more specific hashes for the range or in other words "disaggregate". The disaggregation is-->
 <!--                    less preferred since in case of  mismatches over wide ranges both sides-->
@@ -566,8 +566,8 @@ Hash $6EB348F808C9AE4E
             </section>
         </section>
 
-        <section title="Advertising and Receiving PMHPs">
-            <t>Where PSNPs are used, PMHPs may extend or substitute the exchange as long the rules of
+        <section title="Advertising and Receiving PASHs">
+            <t>Where PSNPs are used, PASHs may extend or substitute the exchange as long the rules of
                 <xref target="rules"/> are followed.
             </t>
 
@@ -576,38 +576,38 @@ Hash $6EB348F808C9AE4E
 
         <section title="Refinement Rules" anchor="rules">
             <t>
-                When a node receives an MHP where any of the contained hashes
+                When a node receives an ASH where any of the contained hashes
                 does not match after recomputation or comparison, it MUST
-                immediately send PMHPs with Merkle hashes covering the mismatched ranges. These new hashes MUST be
+                immediately send PASHs with Merkle hashes covering the mismatched ranges. These new hashes MUST be
                 more specific than the range where the mismatch occurred.
             </t>
             <t>
 
-                Alternatively, instead of more specific PMHP hashes,
+                Alternatively, instead of more specific PASH hashes,
                 a node MAY choose to send corresponding SNPs
                 directly. Sending SNPs immediately may be preferable when the mismatch affects only a
                 small number of LSPs.
 
                 </t>
             <t>In case the mismatched hash has no matching fragments in the local
-                database the node MUST fall back onto either CSNPs or CMHPs or send a PMHP with hash set to 0
+                database the node MUST fall back onto either CSNPs or CASHs or send a PASH with hash set to 0
                 to request the remote node to either refine the range or fall back on normal ISIS procedures
                 to synchronize the database.
 
 
                     In this sense the semantics of a 0 hash are consistent and indicate that a node is not present
-                    in the system or has no fragments which is for the purpose of MHP a distinction without a
+                    in the system or has no fragments which is for the purpose of ASH a distinction without a
                     difference. Hence, a 0 hash consistently indicates that the range
-                    is not covered by MHP compression and MUST be resolved through SNP exchanges or flooding,
+                    is not covered by ASH compression and MUST be resolved through SNP exchanges or flooding,
                     regardless
                     of whether fragments are actually present.
             </t>
 
             <!--                <t>-->
             <!--                    -->
-            <!--                    A node receiving an MHP where any of the hashes received does not match on recomputation or-->
+            <!--                    A node receiving an ASH where any of the hashes received does not match on recomputation or-->
             <!--                    comparison the result of its own hash-->
-            <!--                    MUST send immediately MHPs with Merkle hashes covering the-->
+            <!--                    MUST send immediately ASHs with Merkle hashes covering the-->
             <!--                    ranges where the hash mismatch was detected. The sent hashes MUST be more specific than-->
             <!--                    the range where the collison occurred.-->
             <!--                    Alternately, a node MAY choose to-->
@@ -631,15 +631,15 @@ Hash $6EB348F808C9AE4E
         </section>
 
 
-        <section title="CMHP PDU Format" anchor="format">
+        <section title="CASH PDU Format" anchor="format">
             <t>
-<!--                MHP PDU Format follows closely CSNP format where instead of CSNP entries the according merkle-->
+<!--                ASH PDU Format follows closely CSNP format where instead of CSNP entries the according merkle-->
 <!--                hashes are propagated, i.e. the hashes incorporate strictly the same-->
 <!--                fragments that are being incorporated in-->
 <!--                CSNP packets. Start and End System IDs do not include pseudo node bytes as those are subsumed-->
 <!--                implicitly.-->
 
-                The CMHP PDU format closely follows the CSNP format. Instead of CSNP entries, it carries the
+                The CASH PDU format closely follows the CSNP format. Instead of CSNP entries, it carries the
                 corresponding Merkle hashes - which cover exactly the same fragments that would appear in CSNP packets.
                 The Start and End System IDs exclude pseudonode bytes, as those are implicitly included within the
                 ranges.
@@ -666,7 +666,7 @@ Hash $6EB348F808C9AE4E
 
             <t>
                 The Start and End System IDs use the standard ID length and indicate the range of fragments covered by
-                the MHP, just like CSNPs do. The key difference is that all pseudonodes of the systems within this
+                the ASH, just like CSNPs do. The key difference is that all pseudonodes of the systems within this
                 range are implicitly included (implying as well that all fragments of the range are included).
                 Both the Start and End System IDs are inclusive, meaning fragments from
                 both endpoints are part of the range.  All Node Range Hash Entries
@@ -676,7 +676,7 @@ Hash $6EB348F808C9AE4E
 
 
 <!--                Start and End System IDs are or the usual ID Length and indicate, just like CSNP do,-->
-<!--                the range of fragments that the MHP covers with the difference that all pnodes of-->
+<!--                the range of fragments that the ASH covers with the difference that all pnodes of-->
 <!--                the systems are implied in the range. Start and End System ID are inclusive, i.e.-->
 <!--                the fragments of both the start and the end system ID are included.-->
             </t>
@@ -715,23 +715,26 @@ Hash $6EB348F808C9AE4E
 
         </section>
 
-        <section title="PMHP PDU Format" anchor="pmhp">
+        <section title="PASH PDU Format" anchor="pash">
             <t>
 
 
-                The PMHP PDU format closely follows the CMHP format while, analogous to PSNP, omits the range of
+                The PASH PDU format closely follows the CASH format while, analogous to PSNP, omits the range of
                 the packet.
             </t>
 
             <t>Ranges do not have to be sorted and may overlap.</t>
         </section>
 
-        <section title="CMHP Example">
+        <section title="CASH Example">
 
 
-            <t>An example will clarify things further. Consider an LSDB with 512 nodes, each having a system ID of
-                1000.0000.00&lt;2 digits node-id&gt; and holding 32 fragments numbered 0 - 31. We skip uneven node
-                identifiers to create intentional "holes" in the numbering.
+            <t>An example will clarify things further. Consider an LSDB with nodes having a system ID of
+                1000.0000.00&lt;2 digits node-id&gt;, the digits in range of 0 - 512. Each node is
+                holding 32 fragments numbered 0 - 31. We assume only nodes
+                with even
+                identifiers to be present and with this create intentional "holes" in the numbering and
+                leaving us with 257 nodes.
                 The pseudonode byte is treated simply as part of the system ID, since it doesn't affect the
                 scheme itself.
 
@@ -748,8 +751,8 @@ Hash $6EB348F808C9AE4E
             </t>
 
             <t>
-                In a stable state, reasonable compression can deliver 128 "first-order" leaves - each containing fragments
-                from 2 systems (64 fragments total) - requiring roughly 512 / (2 * 70) ~ 4 packets. The first of these
+                In a stable state, reasonable compression can deliver 129 "first-order" leaves - each containing fragments
+                from 2 systems (64 fragments total) - requiring roughly 129 / 70 ~ 2 packets. The first of these
                 "first-order" packets would look approximately like this:
 
 
@@ -787,15 +790,15 @@ Hash $6EB348F808C9AE4E
             </figure>
 
             <t>
-<!--                Based on a local decision a node can start to further compress the MHPs until-->
+<!--                Based on a local decision a node can start to further compress the ASHs until-->
 <!--                in most extreme case it will send just one packet full of hashes. This will divide-->
 <!--                in our case 512 nodes across 70 hashes (since all of those have same amount of fragments-->
 <!--                for simplicity reason). This ends up being about 8 nodes per hash (equal to 8 * 32 fragments)-->
 <!--                and the packet will look as following.-->
 
-                Based on local decisions, a node can further compress MHPs until - in the most extreme case - it sends just
-                one packet full of hashes. In our example with 512 nodes, this divides them across 70 hashes (assuming
-                equal fragment counts for simplicity), resulting in about 8 nodes per hash (equivalent to 8 * 32
+                Based on local decisions, a node can further compress ASHs until - in the most extreme case - it sends just
+                one packet full of hashes. In our example with 256 nodes, this divides them across 70 hashes (assuming
+                equal fragment counts for simplicity), resulting in about 4 nodes per hash (equivalent to 4 * 32
                 fragments). The resulting packet would look like this:
             </t>
 
@@ -829,18 +832,18 @@ Hash $6EB348F808C9AE4E
 
         <section title="IS-IS Scale Envelope Considerations" toc="default" anchor="envelope">
 <!--            <t>-->
-<!--                As first, obvious observation, MHPs are of negligible value on small networks of tens of nodes-->
+<!--                As first, obvious observation, ASHs are of negligible value on small networks of tens of nodes-->
 <!--                and hundreds of fragments. Arguably, perfectly correctly implemented flooding is enough at any size (which is-->
 <!--                a very optimistic assumption historically speaking) and CSNPs are unnecessary overhead built into-->
 <!--                the protocol although practically speaking they contributed largely to the stability of the protocol-->
 <!--                deployments over years.-->
 <!--                The larger the network becomes the higher the cost of link flap or node restart and the higher-->
-<!--                the steady state cost of issuing periodic CSNPs and hence MHP feature can stretch the scale of IS-IS-->
+<!--                the steady state cost of issuing periodic CSNPs and hence ASH feature can stretch the scale of IS-IS-->
 <!--                by a significant degree.-->
 <!--                </t>-->
 
             <t>
-                MHPs provide negligible benefit in small networks with only tens of nodes and hundreds of fragments.
+                ASHs provide negligible benefit in small networks with only tens of nodes and hundreds of fragments.
                 Perfect flooding would theoretically suffice at any scale (though history shows this is too optimistic), and
                 even CSNPs represent under such assumptions
                 protocol overhead only - yet they have significantly contributed to IS-IS stability in real
@@ -848,7 +851,7 @@ Hash $6EB348F808C9AE4E
                 </t>
             <t>
                 As networks grow larger, the costs of link flaps, node restarts, and periodic CSNP exchanges increase
-                substantially. MHPs can significantly extend IS-IS scalability in these scenarios.
+                substantially. ASHs can significantly extend IS-IS scalability in these scenarios.
             </t>
 
 
@@ -873,7 +876,7 @@ Hash $6EB348F808C9AE4E
 <!--                we look at a sustained peak flooding rate to the control plane of somewhere around 1.5E6 packets-->
 <!--                per second in the system, something that is at least an order of magnitude outside the envelope of any fast flooding-->
 <!--                technique and power available for a on-system distributed control plane. Assuming maximum compression-->
-<!--                using MHP we are however in the order of one additional packet on top of the flooding caused by-->
+<!--                using ASH we are however in the order of one additional packet on top of the flooding caused by-->
 <!--                refreshes. This leaves the 15 * 16E3 ~ 2.4E5 flooding rate to be shouldered by reduction and-->
 <!--                fast flooding techniques. Not an easy task but within the realm of the possible.-->
 
@@ -898,7 +901,7 @@ Hash $6EB348F808C9AE4E
 
             <t>
 
-                With maximum MHP compression, however, sync overhead drops to roughly one additional packet beyond
+                With maximum ASH compression, however, sync overhead drops to roughly one additional packet beyond
                 refresh flooding, leaving ~250,000 packets/second (15 * 16K) to be handled by fast flooding and
                 flood reduction
                 techniques - a challenging but feasible target.
@@ -906,11 +909,11 @@ Hash $6EB348F808C9AE4E
 
 
             <t>
-                The considerations above make it clear that combining fast flooding, flood reduction, and MHP features
+                The considerations above make it clear that combining fast flooding, flood reduction, and ASH features
                 will be essential in extending IS-IS scalability as deployments continue to grow larger.
 
 <!--                With the above considerations it should become clear that a mixture of fast flooding, flood reduction-->
-<!--                and MHP features will be critical to extend the deployable envelope of IS-IS given the ever-increasing-->
+<!--                and ASH features will be critical to extend the deployable envelope of IS-IS given the ever-increasing-->
 <!--                deployment of the protocol.-->
             </t>
 
@@ -922,29 +925,29 @@ Hash $6EB348F808C9AE4E
                 <t>
 <!--                Although the mechanism can be applied to the point where a single merkle hash represents-->
 <!--                an arbitrarily large database, such a single hash is not advisable. Limiting hash coverage-->
-<!--                to the point where at maximum a single full MHP packet is far more preferable.-->
+<!--                to the point where at maximum a single full ASH packet is far more preferable.-->
 
                     Although the mechanism can theoretically use a single Merkle hash to represent an arbitrarily large
                     database, such an approach is not advisable. Instead, it is far preferable to limit hash coverage so
-                    that at minimum one full MHP packet is required.
+                    that at minimum one full ASH packet is required.
                 </t>
 
                 <t>
-                    In practice, limiting compression so that a maximum of about a dozen MHP packets covers the entire
-                    database is usually sufficient. For example, a single maximally compressed MHP packet for a
-                    1,000 - fragment database covers ~140 fragments per hash. Allowing for more MHP packets (e.g., 10 instead of
+                    In practice, limiting compression so that a maximum of about a dozen ASH packets covers the entire
+                    database is usually sufficient. For example, a single maximally compressed ASH packet for a
+                    1,000 - fragment database covers ~140 fragments per hash. Allowing for more ASH packets (e.g., 10 instead of
                     100 CSNPs) still provides a 10x compression factor, reduces disaggregation needs during LSDB changes, and
                     further lowers the already negligible collision risk (which in 1K sized LSDB is however
                     vanishingly small with a single hash already).
 
 
-<!--                    Generally, limiting compression to the point where maximum of a dozen MHP packets cover the database-->
-<!--                    can be practically speaking better than enough. As practical example a single MHP packet on-->
+<!--                    Generally, limiting compression to the point where maximum of a dozen ASH packets cover the database-->
+<!--                    can be practically speaking better than enough. As practical example a single ASH packet on-->
 <!--                    a 1E3 fragments database compressed to maximum extent-->
-<!--                    covers with each hash ~140 fragments. Allowing more MHP packets will lead to less disaggregation-->
+<!--                    covers with each hash ~140 fragments. Allowing more ASH packets will lead to less disaggregation-->
 <!--                    on LSDB changes obviously, lower collision possibility further (which in 1E3 sized LSDB is however-->
 <!--                    vanishingly small with a single hash already) and e.g.-->
-<!--                    10 MHP packets compared to 100 CSNP packets covering the LSDB normally-->
+<!--                    10 ASH packets compared to 100 CSNP packets covering the LSDB normally-->
 <!--                    is a compression factor of 10x already.-->
                 </t>
             </section>
@@ -962,7 +965,7 @@ Hash $6EB348F808C9AE4E
 <!--                    checksums are uniformly likely, even if the content varies by relatively few bytes.-->
 <!--                    With that assumption, the-->
 <!--                    likelihood of such event is simply 1/2^16 or 0.001%. This will allow for further-->
-<!--                    comparisons with MHP fletcher collision likelihood.-->
+<!--                    comparisons with ASH fletcher collision likelihood.-->
 <!--                    </t>-->
                 <t>
 
@@ -975,19 +978,19 @@ Hash $6EB348F808C9AE4E
                 <t>
                     Assuming Fletcher checksums are uniformly distributed (even with minor content changes), the
                     collision probability for that case is 1/2**16 ~ 0.0015%. This baseline enables meaningful
-                    comparisons with MHP
+                    comparisons with ASH
                     Fletcher collision probabilities.
 
                 </t>
                 <t>
-<!--                    MHP generates 48 bit fletcher checksums over what is basically PSNP data of a fragment-->
+<!--                    ASH generates 48 bit fletcher checksums over what is basically PSNP data of a fragment-->
 <!--                    and ISIS length of the fragment.-->
 <!--                    We will be concerned about the likelihood of two fragments being at the same time generating-->
-<!--                    the same fletcher checksum while they are covered by the same MHP since such a constellation-->
+<!--                    the same fletcher checksum while they are covered by the same ASH since such a constellation-->
 <!--                    will make both fragments "disappear" due to the nature of the XOR checksum. Any collision-->
 <!--                    that is not the in the node range hash is irrelevant.-->
 
-                    MHP uses 64-bit <xref target="SIPHASH"/> over what is essentially PSNP data for a fragment plus the
+                    ASH uses 64-bit <xref target="SIPHASH"/> over what is essentially PSNP data for a fragment plus the
                     fragment's IS-IS length. The key concern is the probability that two fragments - covered by the same
                     hash - generate the same hash simultaneously. This would cause both fragments to
                     "disappear" due to the XOR checksum nature. Collisions occurring for fragments in 
@@ -1037,7 +1040,7 @@ Hash $6EB348F808C9AE4E
                     36E9 refreshes of all fragments, we observed a total of 142 collisions for 48 bits variant of
                     <xref target="SIPHASH"/> on the whole set or roughly ~0.000,000,4%, much lower than birthday paradox
                     prediction.
-                    However, assuming a single MHP packet covering the whole database only 3 collisions of those matter
+                    However, assuming a single ASH packet covering the whole database only 3 collisions of those matter
                     - a probability of ~0.000,000,008%,
                     or roughly 1 occurrence per 20 years. These collisions have an average lifetime of about 10 hours. These
                     rates are orders of magnitude lower than the birthday paradox predictions, likely because node
@@ -1065,7 +1068,7 @@ Hash $6EB348F808C9AE4E
 <!--                <t>-->
 <!--                    The situation becomes more practically relevant when considering collisions within a single-->
 <!--                    highest-compression packet containing 70 hashes. This roughly halves the collision rate, leading to-->
-<!--                    about 1 collision per year in such a large network. If compression is instead limited to 70 MHP-->
+<!--                    about 1 collision per year in such a large network. If compression is instead limited to 70 ASH-->
 <!--                    packets (rather than maximum compression), the rate drops further to approximately 1 collision per-->
 <!--                    10 years.-->
 <!--                    </t>-->
@@ -1075,33 +1078,33 @@ Hash $6EB348F808C9AE4E
 <!--                    once we start to consider how many collision occur in-->
 <!--                    the highest compression packet with 70 hashes. This roughly halves the amount of collisions-->
 <!--                    so we can expect in such a large network about 1 collision per year. Once we go to the assumption-->
-<!--                    that we don't use maximum compression but limit it to 70 MHP packets we end up with about 1 collision-->
+<!--                    that we don't use maximum compression but limit it to 70 ASH packets we end up with about 1 collision-->
 <!--                    per 10 years.-->
 <!--                </t>-->
 
 <!--                <t>-->
 <!--                    Surprisingly, switching to 64-bit hashes reduces total collisions by only about 50%, and under-->
-<!--                    maximum compression (single full MHP packet), the results are actually measurably worse. This-->
+<!--                    maximum compression (single full ASH packet), the results are actually measurably worse. This-->
 <!--                    appears to be because 64-bit collisions tend to cluster more closely together in the database - a-->
 <!--                    phenomenon we currently lack an explanation for.-->
 
 <!--&lt;!&ndash;                Surprisingly enough, going to 64 bit drops the total number of collisions by about 50% but under the&ndash;&gt;-->
-<!--&lt;!&ndash;                assumptions of a single full MHP packet the outcome is measurably worse. This is based on the fact&ndash;&gt;-->
+<!--&lt;!&ndash;                assumptions of a single full ASH packet the outcome is measurably worse. This is based on the fact&ndash;&gt;-->
 <!--&lt;!&ndash;                taht 64 bit collision hashes occur much "closer together" on the database, something for which we lack an explanation.&ndash;&gt;-->
 <!--                </t>-->
 
                 <t>
                     Ultimately, a highly conservative (not to say paranoid) implementation can simply monitor the LSDB for colliding
-                    fragment hashes and exclude them from the same MHP hash. This forces receiving
+                    fragment hashes and exclude them from the same ASH hash. This forces receiving
                     nodes to use separate collision-free hashes instead. Such an approach completely eliminates any risk
-                    of synchronization misses when using MHPs.
+                    of synchronization misses when using ASHs.
                 </t>
 
 <!--                <t>Obviously, a very, very conservative, not to say paranoid implementation can easily-->
 <!--                monitor the LSDB for presence of colliding fletcher hashes on the fragments and simply prevent-->
-<!--                such fragments being included in a single MHP hash which will force the receiving node-->
+<!--                such fragments being included in a single ASH hash which will force the receiving node-->
 <!--                to consider separate hashes without a collision in them. This is sufficient to prevent-->
-<!--                any kind of "misses" when using MHP to synchronize the databases.</t>-->
+<!--                any kind of "misses" when using ASH to synchronize the databases.</t>-->
                 <t>
                     Other techniques are possible, such as slowly walking the database and sending CSNPs. However, for a
                     1M-fragment database that generates 10,000 such CSNP packets, the chance of this detecting a collision
@@ -1116,13 +1119,13 @@ Hash $6EB348F808C9AE4E
             <section title="Impact of Packet Losses">
                 <t>
                     Hashes covering large numbers of fragments are more vulnerable to packet losses, as each lost packet
-                    affects a much larger portion of the LSDB during synchronization. Implementations can choose MHP
+                    affects a much larger portion of the LSDB during synchronization. Implementations can choose ASH
                     node ranges freely, but should balance maximum compression against "good enough" compression that
                     reduces both collision risk and vulnerability to unavoidable packet drops.
 
 <!--                    Hashes covering large numbers of fragments will be more susceptible to packet losses since each loss-->
 <!--                    covers a much larger part of the LSDB during synchronization. An implementation can choose the-->
-<!--                    node ranges covered by MHPs in any way it desires but a consideration should be a balance-->
+<!--                    node ranges covered by ASHs in any way it desires but a consideration should be a balance-->
 <!--                    between maximum reduction and a compression "good enough" that is less prone to collisions and-->
 <!--                    unavoidable packet losses.-->
                 </t>
@@ -1131,13 +1134,13 @@ Hash $6EB348F808C9AE4E
             <section title="Decompression and Caching/Comparison Optimizations">
                 <t>
 <!--                    As mentioned above a node may apply many strategies to speed up decompression.-->
-<!--                    E.g. LSPs missing in MHPs as not covered by ranges are clearly "missing in action" and can-->
+<!--                    E.g. LSPs missing in ASHs as not covered by ranges are clearly "missing in action" and can-->
 <!--                    be reflooded. As another example,-->
 <!--                    small ranges where merkle mismatched can generate CSNPs, PSNPs or lead to flooding immediately.-->
 
                     As mentioned earlier, nodes can use various strategies to accelerate decompression. For example,
-                    LSPs missing from MHPs (those not covered by any ranges) are clearly absent and can be immediately
-                    reflooded. Similarly, small mismatched Merkle ranges can trigger immediate CSNPs, PSNPs, or direct
+                    LSPs missing from CASHs (those not covered by any ranges) are clearly absent and can be immediately
+                    reflooded. Similarly, small mismatched ranges can trigger immediate CSNPs, PSNPs, or direct
                     flooding.
 
                 </t>
@@ -1163,7 +1166,7 @@ Hash $6EB348F808C9AE4E
 
         <section title="Security Considerations" toc="default">
 
-            <t>MHP security relies on the same mechanisms protecting ISIS PDU integrity.
+            <t>ASH security relies on the same mechanisms protecting ISIS PDU integrity.
             </t>
 
         </section> <!-- end of security considerations -->
@@ -1286,9 +1289,9 @@ Hash $6EB348F808C9AE4E
 pub fn fragment_hash(
     fragmentid: &SharedFragmentID,
     fragmentcontent: &FragmentContent,
-    variant: Option<MHPFragmentHashVariant>,
-    size: Option<MHPSize>,
-) -> MHPHash {
+    variant: Option<ASHFragmentHashVariant>,
+    size: Option<ASHSize>,
+) -> ASHHash {
     let nid = fragmentid.node.node_id().0;
     let pnodebe = fragmentid.pnode.0.to_be_bytes();
     let seqnrbe = fragmentcontent.seqnr.0.to_be_bytes();
@@ -1306,11 +1309,11 @@ pub fn fragment_hash(
         ),
     );
 
-    let size = size.unwrap_or(MHPSize::LIBRARY_MHP_SIZE);
-    let variant = variant.unwrap_or(MHPFragmentHashVariant::LIBRARY_MHP_FRAGMENT_HASH);
+    let size = size.unwrap_or(ASHSize::LIBRARY_ASH_SIZE);
+    let variant = variant.unwrap_or(ASHFragmentHashVariant::LIBRARY_ASH_FRAGMENT_HASH);
 
     match variant {
-        MHPFragmentHashVariant::Siphash => {
+        ASHFragmentHashVariant::Siphash => {
 
             let key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16u8];
             let mut hasher = SipHasher13::new_with_key(&key);
@@ -1325,10 +1328,10 @@ pub fn fragment_hash(
                 _ => unreachable!(),
             };
             match size {
-                MHPSize::_64Bits => {
+                ASHSize::_64Bits => {
                     r.into()
                 },
-                MHPSize::_48Bits => {
+                ASHSize::_48Bits => {
                     let hin = r ^ (r >> 48);
                     (hin & 0xffff_ffff_ffff).into()
                 }
