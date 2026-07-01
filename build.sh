@@ -22,12 +22,13 @@
     # rm $f.1
     done
 
-echo -- reduction
-D=hierarchical-snps
+echo -- ash
+D=draft-prz-lsr-ash-packets
 
 xml2rfc $D.xml
 xml2rfc --pdf $D.xml
 xml2rfc --v2 --raw $D.xml
+xml2rfc --allow-local-file-access --expand $D.xml
 
 nl -ba $D.txt > $D.nl.txt
 

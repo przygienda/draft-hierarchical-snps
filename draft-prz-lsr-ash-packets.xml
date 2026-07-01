@@ -61,7 +61,7 @@
         </author>
 
         <author initials='J.' surname='Halpern' fullname='Joel Halpern'>
-            <organization>JHPE Juniper Networking</organization>
+            <organization>HPE Juniper Networking</organization>
             <address>
                 <email>joel.halpern@hpe.com</email>
             </address>
@@ -132,49 +132,47 @@
 <!--            </t>-->
 
             <t>
-                To maintain the merkle analogy, we initially treat
-                each SNP entry for an LSP as equivalent to a "as good as perfect",
-                though rather long,
-                Merkle hash. In other words, in the first step, the LSP ID, sequence number,
+                To maintain the Merkle analogy, we initially treat
+                each SNP entry for an LSP as equivalent to an "as good as perfect" -
+                though rather long -
+                Merkle hash. In other words, the LSP ID, sequence number,
                 and checksum act as a "collision-free fragment hash".
-                We include the fragment's PDU length to such a perfect hash to add
+                We include the fragment's PDU length in this perfect hash to add
                 more entropy in the next step.
                 Lifetime is not used since it is
-                not compared except in purge cases. The SNPs then serve as the "bottom" of the Merkle tree
-                conceptually speaking.
+                not compared except in purge cases. The SNP entries then serve as the conceptual "bottom" of
+                the Merkle tree.
             </t>
 
                 <t>
-                In the following step we compute a  <xref target="SIPHASH"/> over the SNP entry
-                description to create a shorter merkle
-                hash for each fragment. Somewhat surprisingly, those hashes are never transmitted in packets,
+                In the following step we compute a <xref target="SIPHASH"/> over the SNP entry
+                data to create a shorter Merkle
+                hash for each fragment. Somewhat surprisingly, these per-fragment hashes are never transmitted in packets,
                 since doing so would effectively
                 duplicate SNP functionality.
                 However, the hash that aggregates all fragment hashes of a node becomes a "node Merkle hash". Groups
-                of such node hashes can then be summarized again into a "node range Merkle hash", created by hashing the
+                of node hashes can then be summarized into a "node range Merkle hash" by combining the
                 individual node hashes together. For the node and node range hashes,
                 we switch from <xref target="SIPHASH"/> to a different hashing
                 method, as explained in <xref target="hashfn"/>.
                     </t>
                 <t>
 
-                The resulting hierarchy of hashes enables validation of large LSDB synchronizations using far fewer
-                packets than relying solely on CSNPs. Although these hashes summarize ranges recursively, the resulting
-                exchange, depending on range mismatches, resembles a <xref target="SKIP"/>-like process rather than
-                maintaining a fixed
-                tree structure in every exchange since the packets and ranges exchanged vary depending on where
-                mismatches have been found.
+                The resulting hierarchy of hashes enables large LSDB synchronizations using far fewer
+                packets than CSNPs alone. Although the hashes summarize ranges recursively, the actual
+                exchange resembles a <xref target="SKIP"/>-like process rather than
+                maintaining a fixed tree structure, since the packets and ranges exchanged vary depending on where
+                mismatches are found.
             </t>
 
             <t>
 
-                This document limits itself for practical purposes to LSDB sizes
-                of the order of 1E6 fragments and further considerations necessary to prevent overly
+                This document limits itself to LSDB sizes on the order of 1E6 fragments
+                and addresses considerations necessary to prevent overly
                 garrulous exchanges
-                of hashes covering smaller and smaller sets of fragments. More details on the
-                targeted IS-IS envelope can be found in <xref target="envelope"/> and further
-                considerations revolving around these assumptions
-                are summarized in
+                of hashes covering progressively smaller sets of fragments. More details on the
+                targeted IS-IS scale envelope can be found in <xref target="envelope"/>, and further
+                considerations are summarized in
                 <xref target="further"/>.
             </t>
 
@@ -182,29 +180,30 @@
 
         <section title="Example" anchor="startexample">
             <t>
-                Before light is shed on precise technical details
-                a first example will be very helpful and help to introduce the concepts
-                involved and demonstrate behavior of an exchange.
+                Before diving into precise technical details,
+                an example will help introduce the concepts
+                involved and demonstrate the behavior of an exchange.
             </t>
             <t> The exchange consists of initial CASH packets (analogous to CSNPs but carrying node range hashes)
-                and then
-                subsequent PASH (analogous to PSNPs) packets leaving out the matching ranges and exchanging hashes
-                of "smaller" ranges until a hash covers a single node only at which point PSNPs or direct flooding
-                is used to synchronize the databases in a very traditional IS-IS manner. ASH operates however
-                at the resolution of a system ID (including ins pseudo nodes) and not a fragment.
+                followed by
+                PASH packets (analogous to PSNPs) that omit matching ranges and exchange hashes
+                over progressively smaller ranges. Once a hash covers a single node only, PSNPs or direct flooding
+                is used to synchronize the databases in the traditional IS-IS manner. ASH operates
+                at the resolution of a system ID (including its pseudonodes), not individual fragments.
             </t>
             <t>
-            The details of paket formats are provided later in <xref target="pash-format"/> and
-            <xref target="cash-format"/> and details of involved procedures in <xref target="rules"/>
-                but the example can be intuitively understood without those details for now.
+            The details of packet formats are provided later in <xref target="pash-format"/> and
+            <xref target="cash-format"/>, and the procedures are defined in <xref target="rules"/>,
+                but the example can be understood intuitively without those details.
                 For the sake of readability the example encompasses only a database of roughly 3000 fragments
                 over 100 nodes with about 10% of the database not synchronized on start. Details of PSNP packets
-                exchanged are omitted for the same reason.
+                exchanged are omitted for the same reason. Note that the fragment counts shown in the
+                examples are informational annotations only and are not carried in the wire format of ASH entries.
             </t>
 
-            <t>Initially both nodes generate a CASH packet each and exchange it. Node 1 sends to Node 2 a CASH shown in
-                <xref target="n1-cash"/> with
-            node range hashes of which some will disagree with the peer.</t>
+            <t>Initially, both nodes generate and exchange a CASH packet. Node 1 sends to Node 2 the CASH shown in
+                <xref target="n1-cash"/>, containing
+            node range hashes, some of which will disagree with the peer.</t>
 
             <figure anchor="n1-cash">
                 <artwork align="left" name="" type="" alt=""><![CDATA[
@@ -248,9 +247,9 @@ Pkt   1 [1010.0000.00.00 - 1010.0063.00.00] (  35 hashes):
 ]]></artwork>
             </figure>
 
-            <t>In an analogous fashion, node 2 will send an initial CASH with 32 hashes as shown in <xref target="n1-cash"/>.
-                It may be counter-intuitive that the ranges exchanged do not match but this is natural since
-                the databases do not match up either. <xref target="noderanges"/> will address this effect in more
+            <t>Analogously, Node 2 sends an initial CASH with 33 hashes as shown in <xref target="n2-cash"/>.
+                It may seem counter-intuitive that the ranges do not align, but this is natural since
+                the databases themselves differ. <xref target="noderanges"/> addresses this effect in more
                 detail.
             </t>
 
@@ -294,12 +293,12 @@ Pkt   1 [1010.0000.00.00 - 1010.0063.00.00] (  33 hashes):
 ]]></artwork>
             </figure>
 
-        <t>At this point in time both nodes will take the range mismatches they detected and cut those
-            into smaller ranges. 13 of those "cuts" end up delivering just a single system ID as range and
-            hence trigger either CSNP, PSNP or full flooding events to synchronize the database. This synchronization
-            is standard IS-IS behavior and
-            occurring in parallel disregarding any further ASH exchanges triggered.
-            In this example, one additional packet is sent with ranges large enough to use ASH as shown in
+        <t>At this point both nodes take the range mismatches they detected and split them
+            into smaller ranges. 13 of those splits yield a single system ID as range and
+            hence trigger CSNP, PSNP, or full flooding to synchronize the database. This synchronization
+            follows standard IS-IS behavior and
+            proceeds in parallel, independent of any further ASH exchanges.
+            In this example, one additional packet is sent with ranges large enough to warrant ASH, as shown in
             <xref target="n1-pash"/>.
         </t>
 
@@ -315,15 +314,15 @@ Node1 -> Node2 (after cuts) -> 1 PASH packet(s)
         </figure>
 
 <t>
-    Cutting mismatches within those remaining ranges inside node 2 will lead to either CSNP, PSNP or full flooding for the nodes involved
-    since no ranges large enough to merit an ASH exchange remain.
+    Splitting the remaining mismatched ranges on Node 2 will lead to CSNP, PSNP, or full flooding for the affected nodes,
+    since no ranges large enough to warrant further ASH exchange remain.
 </t>
             <t>
-                Assuming PSNP strategy for single system ID mismatch is used the example would generate
-                7 PSNPs (since PSNPs MUST be sent covering all the fragments of a system ID
-                that ASH discovered to be mismatched) from both sides and 2 CASHes and 3 PASHes.
-                This compares favorably to 62 CSNPs that
-                would be normally used on startup.
+                Assuming a PSNP strategy for single-system-ID mismatches, the example generates
+                7 PSNPs from both sides (since PSNPs MUST cover all fragments of a system ID
+                that ASH discovered to be mismatched), plus 2 CASHes and 3 PASHes.
+                This compares favorably to the 62 CSNPs that
+                would normally be required on startup.
             </t>
         </section>
         <!--
@@ -439,10 +438,10 @@ Node1 -> Node2 (after cuts) -> 1 PASH packet(s)
         
         -->
 
-            <section title="Node Range Considerations" anchor="noderanges">
+            <section title="Node Ranges" anchor="noderanges">
 
-                <t>To talk meaningfully about node range hashes,  we will refer to hashes that cover a wider range of nodes as
-                    less specific, and to those covering only a subset of that range as more specific.
+                <t>To discuss node range hashes meaningfully, we refer to hashes covering a wider range of nodes as
+                    "less specific" and those covering only a subset of that range as "more specific".
 
                 </t>
 
@@ -462,24 +461,24 @@ Node1 -> Node2 (after cuts) -> 1 PASH packet(s)
 
 
 
-                    When nodes advertise hashes of node ranges to each other, it
-                    would be obviously useful for efficient, cache-based implementations to agree on the node ranges
-                    chosen as this would make caching of merkle nodes much more
-                    effective. However, while this idea seems viable in theory, implementing it across a large number of
+                    When nodes advertise node range hashes to each other, it
+                    would obviously be useful for cache-based implementations to agree on which ranges
+                    to use, as this would make caching much more
+                    effective. However, while this seems viable in theory, implementing it across many
                     interfaces would effectively require a global synchronization protocol - something impractical in a
-                    network where nodes are constantly adding, removing, and updating fragments asynchronously. These
-                    ongoing changes continually affect what the "optimal" hash ranges are. And with enough churn, such
-                    a range negotiation protocol might never converge at all.
+                    network where nodes constantly add, remove, and update fragments asynchronously. These
+                    ongoing changes continually shift what the "optimal" hash ranges are, and with enough churn, such
+                    a range negotiation protocol might never converge.
 
                     </t>
 
 
 
                 <t>
-                    Alternatively, providing a fast way to reconstruct the internal Merkle hash for a "mismatched" range
-                    could reduce the need for perfect range alignment. Since hashes are built on system ID boundaries
+                    Alternatively, providing a fast way to reconstruct the Merkle hash for a "mismatched" range
+                    reduces the need for perfect range alignment. Since hashes are built on system ID boundaries,
                     maintaining a Merkle hash per system ID allows a node to quickly
-                    recompute the required hashes whenever ranges differ from any cached ones.
+                    recompute the required hashes whenever received ranges differ from cached ones.
 
                 </t>
 
@@ -490,10 +489,10 @@ Node1 -> Node2 (after cuts) -> 1 PASH packet(s)
 <!--                    processing overhead.-->
 <!--                </t>-->
 
-                <t>As second consideration, even though a fully stable network could, in theory, be represented by a single hash covering the
+                <t>As a second consideration, even though a fully stable network could in theory be represented by a single hash covering the
                     entire LSDB, doing so is neither desirable nor beneficial. Since an ASH packet must be sent anyway,
-                    it is much better to fill it with as many range hashes as possible. This approach limits the amount of
-                    work required if a collision occurs within one of the advertised ranges and also reduces the risk of
+                    it is much better to fill it with as many range hashes as possible. This limits the
+                    work required when a collision occurs within one of the ranges and also reduces the risk of
                     hash collisions, as discussed in <xref target="collisions"/>.
 
                     </t>
@@ -502,9 +501,9 @@ Node1 -> Node2 (after cuts) -> 1 PASH packet(s)
                 <t>
                     In summary, a node should avoid compressing beyond the point where a single ASH covers the entire
                     database. Ideally, one ASH should contain at most about (MTU / Node Range Hash Entry Size)
-                    hashes - or fewer - to keep collision probabilities low, as described in detail in <xref target="collisions"/>.
-                    And due to the efficiency of generating node range hashes there is no need to put a special
-                    effort into "agreeing" on the ranges advertised when communicating with peers.
+                    hashes to keep collision probabilities low, as described in <xref target="collisions"/>.
+                    Due to the efficiency of recomputing node range hashes on the fly, there is no need
+                    to negotiate or agree on ranges with peers.
                 </t>
 
 
@@ -554,6 +553,7 @@ Claude (Anthropic) assisted in reviewing the draft specification, identifying am
 
             </section>
 
+        <section title="Hash Functions">
         <section title="Hash Function for a Fragment">
             <t>
                 Each fragment generates a 64-bit <xref target="SIPHASH">siphash-1-3</xref> from
@@ -563,12 +563,12 @@ Claude (Anthropic) assisted in reviewing the draft specification, identifying am
             </t>
 
             <t>
-                In case the fragment hash generates a zero value the value MUST be replaced with
-                constant of value 1.
+                If a fragment hash computes to zero, the value MUST be replaced with
+                the constant 1.
             </t>
 
             <t>
-                To validate correctness of an implementation a reference hash is provided in
+                To validate implementation correctness, a reference hash is provided in
                 <xref target="reference-hash"/>.
             </t>
 
@@ -597,19 +597,19 @@ Hash $6EB348F808C9AE4E
             </t>
 
             <t>
-            Deeper considerations on such hashes can be found in
-            <xref target="HASHES"/>
-            but the design space here
-            is simplified due to the irrelevance of security involved.
+            Further discussion of such hashes can be found in
+            <xref target="HASHES"/>,
+            but the design space is
+            simplified here since cryptographic security is not a concern.
             </t>
 
 
             <t>
-                The hash for a set of fragments is computed using XOR over their fragment hashes. This makes
+                The hash for a set of fragments is computed by XORing their individual fragment hashes. This makes
                 it straightforward and very fast
-                to update the hash when a leaf is added, removed, or its checksum changes. As a
-                result, less specific ranges can quickly derive their hash by XOR'ing the hashes of all included, more
-                specific ranges, when those are available.
+                to update the hash when a fragment is added, removed, or its checksum changes. As a
+                result, less specific ranges can quickly derive their hash by XORing the hashes of all included
+                more specific ranges, when those are available.
 
 <!--                The hash function for sets of fragments is a very fast XOR operation of their fletcher hashes.-->
 <!--                This allows to update the hash when adding, removing a leaf or-->
@@ -634,28 +634,37 @@ Hash $6EB348F808C9AE4E
             -->
 
             <t>
-                In case a node range hash generates a zero value the value MUST be replaced with
-                constant of value 1, otherwise the range would assume the semantics of "no fragments for those nodes".
+                If a node range hash computes to zero, the value MUST be replaced with
+                the constant 1; otherwise the range would assume the semantics of "no fragments present for those nodes".
             </t>
         </section>
+    </section>
 
         <section title="Procedures">
             <section title="ASH Support Negotiation">
                 <t>
-                    IIH of nodes supporting this extension MUST include in IIH a new TLV that will indicate
+                    IIHs of nodes supporting this extension MUST include a new TLV indicating
                     support for reception of ASHes.
                     All nodes on the adjacency MUST advertise
-                    the TLV on their IIHs, otherwise ASHes are not used.
-                    Observe that a node may very well just receive and process the ASHs and answer them
-                    always with CSNPs or PSNPs necessary although this is obviously less beneficial than fully supporting
-                    sending and receiving of ASHes.
+                    this TLV in their IIHs; otherwise ASHes are not used on that adjacency.
+                    Note that a node may choose to only receive and process ASHes while always responding
+                    with CSNPs or PSNPs, although this is obviously less beneficial than fully supporting
+                    both sending and receiving of ASHes.
+                </t>
+                <t>
+                    The ASH Capability TLV is a zero-length TLV (type TBD) included in IIH PDUs.  Its presence
+                    indicates that the advertising node is capable of receiving and processing ASH packets.  No
+                    value fields are defined at this time; future extensions may add capability flags within
+                    this TLV.
                 </t>
             </section>
 
             <section title="Advertising and Receiving CASHes">
                 <t>
                     Advertising of standard CSNPs is extended or replaced
-                    with CASH advertisements when this feature is supported. Since
+                    with CASH advertisements when this feature is supported. Analogous to CSNPs,
+                    CASHes are sent periodically at the same interval as configured for CSNP advertisement.
+                    Since
                     both CSNPs and CASHes carry range information in their headers, they can be freely mixed, depending
                     on which level of fragment "compression" best fits the situation. In practice, sufficiently specific
                     range mismatches will naturally fall back to SNP exchanges or flooding to resolve remaining
@@ -712,18 +721,24 @@ Hash $6EB348F808C9AE4E
 
 
             </section>
-        </section>
 
-        <section title="Advertising and Receiving PASHes">
-            <t>Where PSNPs are used, PASHes may extend or substitute the exchange as long the rules of
-                <xref target="rules"/> are followed.
+            <section title="Advertising and Receiving PASHes">
+                <t>Where PSNPs are used, PASHes may extend or substitute the exchange as long as the rules of
+                    <xref target="rules"/> are followed.
+                </t>
+            </section>
+
+            <section title="Refinement Rules" anchor="rules">
+            <t>
+                ASH exchanges are per-level, analogous to CSNP/PSNP exchanges.  CASH and PASH
+                packets are scoped to the IS-IS level (Level 1 or Level 2) of the adjacency on which they
+                are sent, just as CSNPs are.
             </t>
-
-
-
-        </section>
-
-        <section title="Refinement Rules" anchor="rules">
+            <t>
+                Fragments in purge state (remaining lifetime of zero) are NOT included in ASH hash
+                computations, consistent with the treatment of purges in CSNP exchanges.  Purges are
+                handled through normal IS-IS flooding procedures independently of ASH.
+            </t>
             <t>
                 When a node receives an ASH where any of the contained hashes
                 does not match after recomputation or comparison, it MUST
@@ -739,17 +754,16 @@ Hash $6EB348F808C9AE4E
 
                 </t>
             <t>In case the mismatched hash has no matching fragments in the local
-                database the node MUST fall back onto either CSNPs or CASHes or send a PASH with hash set to 0
-                to request the remote node to either refine the range or fall back on normal IS-IS procedures
+                database, the node MUST fall back to CSNPs or CASHes, or send a PASH with hash set to zero
+                to request the remote node to either refine the range or use normal IS-IS procedures
                 to synchronize the database.
 
 
-                    In this sense the semantics of a zero hash are consistent and indicate that a node is not present
-                    in the system or has no fragments which is for the purpose of ASH a distinction without a
-                    difference. Hence, a zero hash consistently indicates that the range
+                    The semantics of a zero hash are consistent in this regard: zero indicates that a node is not present
+                    in the system or has no fragments, which for ASH purposes is a distinction without a
+                    difference. A zero hash consistently indicates that the range
                     is not covered by ASH compression and MUST be resolved through SNP exchanges or flooding,
-                    regardless
-                    of whether fragments are actually present.
+                    regardless of whether fragments are actually present.
             </t>
 
             <!--                <t>-->
@@ -766,20 +780,21 @@ Hash $6EB348F808C9AE4E
             <!--                    covers relatively few LSPs. </t>-->
 
             <t>
-                If there is a mismatch - or no computation available - for a hash covering just a single system ID (with
-                its pseudonodes included) then SNPs for all fragments of the
+                If there is a mismatch - or no computation available - for a hash covering just a single system ID (including
+                its pseudonodes), then SNPs for all fragments of that
                 node and its pseudonodes MUST
-                be sent or such fragments flooded directly.
-                Since this behavior is initiated from both sides of the adjacency both nodes
-                will end up ultimately with a full set of fragments belonging to the node described by the hash even
-                though they use PSNPs.
-                Other techniques MAY also be used instead such as sending CSNP covering the range starting at the smallest
-                possible fragment of the system ID ending with the largest possible fragment.
+                be sent, or the fragments flooded directly.
+                Since this behavior is initiated from both sides of the adjacency, both nodes
+                will ultimately end up with a full set of fragments belonging to the node described by the hash, even
+                when using PSNPs.
+                Other techniques MAY also be used, such as sending a CSNP covering the range from the smallest
+                possible fragment of the system ID to the largest possible fragment.
 
                 <!--                        In case of mismatch or no computation available for a hash covering only a single node-->
                 <!--                        (with its pnodes) or mismatch on a hash covering less than a CSNP PDU full of fragments,-->
                 <!--                        a CSNP MUST be sent or alternately the node MAY choose to flood those fragments.-->
             </t>
+            </section>
         </section>
 
 
@@ -798,21 +813,36 @@ Hash $6EB348F808C9AE4E
             </t>
 
             <figure>
-            <artwork align="center" name="" type="" alt=""><![CDATA[
-        ...
-
-+--------------------------------------------+
-|              PDU Length                    |
-+--------------------------------------------+
-|              Source ID                     |
-+--------------------------------------------+
-|              Start System ID               |
-+--------------------------------------------+
-|              End System ID                 |
-+--------------------------------------------+
-|           Variable Length Fields           |
-+--------------------------------------------+
-
+            <artwork align="left" name="" type="" alt=""><![CDATA[
+                                       No. of Octets
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Intradomain Routing Protocol        |     1
+| Discriminator                       |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Length Indicator                    |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Version/Protocol ID Extension (1)  |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| ID Length                           |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| R R R   PDU Type                    |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Version (1)                         |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Reserved                            |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Max Area Addresses                  |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| PDU Length                          |     2
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Source ID                           |  ID Length + 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Start System ID                     |  ID Length
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| End System ID                       |  ID Length
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Node Range Hash Entries             |  Variable
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ]]></artwork>
             </figure>
 
@@ -837,39 +867,39 @@ Hash $6EB348F808C9AE4E
             </t>
 
         <figure>
-            <artwork align="center" name="" type="" alt=""><![CDATA[
-
-+--------------------------------------------+
-|              Range Start System ID         |
-+--------------------------------------------+
-|              Range End System ID           |
-+--------------------------------------------+
-|              Merkle Hash                   |
-+--------------------------------------------+
+            <artwork align="left" name="" type="" alt=""><![CDATA[
+                                       No. of Octets
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Range Start System ID               |  ID Length
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Range End System ID                 |  ID Length
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Merkle Hash                         |     8
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ]]></artwork>
         </figure>
 
-            <t>Range of fragments that are  included in the hash. Range Start and Range End System ID are inclusive, i.e.
-                the fragments of both the start and the end system ID are contained within the range.  </t>
+            <t>The range of fragments included in the hash. Range Start and Range End System IDs are inclusive, i.e.
+                fragments of both the start and the end system ID are contained within the range.</t>
             <t>
-                Merkle hash consists of 8 bytes of the 64-bit computed hash of all fragments covered
+                The Merkle hash field is 8 octets containing the 64-bit computed hash of all fragments covered
                 by the range.
             </t>
 
             <t>
-                This makes an entry in typical deployment scenarios 6 + 6 + 8 = 20 bytes long and hence about 70
-                hashes fit into a typical MTU .
+                With the standard ID Length of 6, each entry is 6 + 6 + 8 = 20 octets, so about 70
+                entries fit into a standard 1500-byte MTU.
             </t>
 
 
             <t>
-                The ranges in CASH MUST be sorted based on Range Start System ID. The ranges MUST NOT overlap.
-                A receiver encountering overlapping ranges MUST treat the union of the
-                overlapping ranges as a single range with a zero hash. Any range exceeding the CASH range
-                MUST be adjusted for its start and end to fit within the CASH range and treated like a zero hash.
-                Any range that has an end that is equal or smaller than its start MUST be discarded.
-                A node SHOULD log or notify such events in an adequate manner since they point most likely
-                to protocol implementation problems or attacks.
+                The ranges in a CASH MUST be sorted by Range Start System ID. The ranges MUST NOT overlap.
+                A receiver encountering overlapping ranges MUST treat the union of those
+                ranges as a single range with a zero hash. Any range exceeding the CASH header bounds
+                MUST be clamped to fit within the CASH range and treated as a zero hash.
+                Any range whose end is equal to or smaller than its start MUST be discarded.
+                A node SHOULD log such events since they most likely indicate
+                protocol implementation problems or attacks.
             </t>
 
             <t>
@@ -881,10 +911,10 @@ Hash $6EB348F808C9AE4E
             </t>
 
             <t>
-                As with CSNPs, an CASH whose first range covers the first node in the database MUST use
-                0000.0000.0000 as the start system ID in its packet range so that missing nodes can be detected. The
-                same rule applies at the other end of the database: an CASH whose range covers the last node MUST
-                indicate this in a way that allows detection of any missing trailing nodes.
+                As with CSNPs, a CASH whose first range covers the first node in the database MUST use
+                0000.0000.0000 as the start system ID in its packet header so that missing nodes can be detected. The
+                same rule applies at the other end: a CASH whose range covers the last node MUST
+                indicate this so that any missing trailing nodes are detectable.
             </t>
 
         </section>
@@ -897,24 +927,58 @@ Hash $6EB348F808C9AE4E
                 the packet.
             </t>
 
-            <t>PASHes are equivalent to PSNPs in the sense that the entries are all treated independently, i.e.
-                gaps between entries have no semantics, the entries do not have to be sorted and can even overlap.
-                Any range that has an end that is equal or smaller than its start MUST be discarded. A node SHOULD log or notify such events in an adequate manner since they point most likely
-                to protocol implementation problems or attacks.
+            <figure>
+            <artwork align="left" name="" type="" alt=""><![CDATA[
+                                       No. of Octets
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Intradomain Routing Protocol        |     1
+| Discriminator                       |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Length Indicator                    |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Version/Protocol ID Extension (1)  |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| ID Length                           |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| R R R   PDU Type                    |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Version (1)                         |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Reserved                            |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Max Area Addresses                  |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| PDU Length                          |     2
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Source ID                           |  ID Length + 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Node Range Hash Entries             |  Variable
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+]]></artwork>
+            </figure>
+
+            <t>
+                The Variable Length Fields carry the same Node Range Hash Entry format as in CASHes.
+            </t>
+
+            <t>PASHes are equivalent to PSNPs in that entries are treated independently:
+                gaps between entries have no semantics, entries need not be sorted, and may overlap.
+                Any range whose end is equal to or smaller than its start MUST be discarded. A node SHOULD log such events since they most likely indicate
+                protocol implementation problems or attacks.
             </t>
         </section>
 
         <section title="CASH Example">
 
 
-            <t>A more precise example will clarify CASHes further. Consider an LSDB with nodes having a system ID of
-                1000.0000.00&lt;2 digits node-id&gt;, the digits in range of 0 - 512. Each node is
-                holding 32 fragments numbered 0 - 31. We assume only nodes
+            <t>A more detailed example will clarify CASHes further. Consider an LSDB with nodes having system IDs of
+                1000.0000.00&lt;2 digits node-id&gt;, with node-id in the range 0 - 512. Each node
+                holds 32 fragments numbered 0 - 31. We assume only nodes
                 with even
-                identifiers to be present and with this create intentional "holes" in the numbering and
+                identifiers are present, intentionally creating "holes" in the numbering and
                 leaving us with 257 nodes.
-                The pseudonode byte is treated simply as part of the system ID, since it doesn't affect the
-                scheme itself.
+                The pseudonode byte is treated simply as part of the system ID since it does not affect the
+                scheme.
 
 <!--                An example will serve well here. We limit ourselves in the examples to consideration of a-->
 <!--                LSDB with 512 nodes with system identifiers of 1000.0000.00 &lt;2 digits node-id&gt; each holding-->
@@ -1008,7 +1072,9 @@ Hash $6EB348F808C9AE4E
         </section>
 
 
-        <section title="IS-IS Scale Envelope Considerations" toc="default" anchor="envelope">
+        <section title="Further Considerations" toc="default" anchor="further">
+
+            <section title="IS-IS Scale Envelope" toc="default" anchor="envelope">
 <!--            <t>-->
 <!--                As first, obvious observation, ASHs are of negligible value on small networks of tens of nodes-->
 <!--                and hundreds of fragments. Arguably, perfectly correctly implemented flooding is enough at any size (which is-->
@@ -1022,9 +1088,9 @@ Hash $6EB348F808C9AE4E
 
             <t>
                 ASHs provide negligible benefit in small networks with only tens of nodes and hundreds of fragments.
-                Perfect flooding would theoretically suffice at any scale (though history shows this is too optimistic), and
-                even CSNPs represent under such assumptions
-                protocol overhead only - and yet they have significantly contributed to IS-IS stability in real historical
+                Perfect flooding would theoretically suffice at any scale (though history shows this is too optimistic),
+                and CSNPs under such assumptions represent
+                protocol overhead only - yet they have significantly contributed to IS-IS stability in real
                 deployments.
                 </t>
             <t>
@@ -1060,21 +1126,21 @@ Hash $6EB348F808C9AE4E
 
             <t>
                 To push IS-IS to its practical limits, we must account for flooding rates driven by fragment refreshes
-                and LSDB synchronization. Path computation impacts can be deferred - bare pathological scenarios -
-                by using dampening and parallelization,
-                and thus we focus on realistic scenarios in the order of 50,000 nodes and 1 million fragments. We assume
-                the outer envelope of 16K peers which presents some margin to the largest deployments realized today.
+                and LSDB synchronization. Path computation impacts can be deferred - barring pathological scenarios -
+                through dampening and parallelization,
+                so we focus on realistic scenarios on the order of 50,000 nodes and 1 million fragments. We assume
+                an outer envelope of 16K peers, which provides some margin over the largest deployments realized today.
             </t>
             <t>
                 At maximum configured lifetime of 65K seconds, this generates ~15 packets/second per interface from refreshes (1M/65K
                 fragments/second), plus periodically ~10,000 CSNP packets for full LSDB sync.
             </t>
             <t>
-                Achieving a sync within modest 120 seconds
-                requires ~80 CSNPs/second, and across 16,000 interfaces, that represents a peak of 1.5 million
+                Achieving sync within a modest 120 seconds
+                requires ~80 CSNPs/second, and across 16,000 interfaces this represents a peak of 1.5 million
                 packets/second - far
                 beyond current fast-flooding capabilities.
-                We disregard here further techniques like <xref target="ID.draft-ietf-lsr-distoptflood-11"/>, 
+                We disregard here techniques like <xref target="ID.draft-ietf-lsr-distoptflood-11"/>,
                 especially since they do not improve CSNP scale.
             </t>
 
@@ -1088,17 +1154,15 @@ Hash $6EB348F808C9AE4E
 
 
             <t>
-                The considerations above make it clear that combining fast flooding, flood reduction, and ASH features
-                will be essential in extending IS-IS scalability as deployments continue to grow larger.
+                The above makes it clear that combining fast flooding, flood reduction, and ASH
+                will be essential for extending IS-IS scalability as deployments continue to grow.
 
 <!--                With the above considerations it should become clear that a mixture of fast flooding, flood reduction-->
 <!--                and ASH features will be critical to extend the deployable envelope of IS-IS given the ever-increasing-->
 <!--                deployment of the protocol.-->
             </t>
 
-        </section>
-
-        <section title="Further Considerations" toc="default" anchor="further">
+            </section>
 
             <section title="Maximum Advisable Hash Coverage">
                 <t>
@@ -1169,10 +1233,10 @@ Hash $6EB348F808C9AE4E
 <!--                    will make both fragments "disappear" due to the nature of the XOR checksum. Any collision-->
 <!--                    that is not the in the node range hash is irrelevant.-->
 
-                    ASH uses 64-bit <xref target="SIPHASH"/> over what is essentially PSNP data for a fragment plus the
-                    fragment's IS-IS length. The key concern is the probability that two fragments - covered by the same
-                    hash - generate the same hash simultaneously. This would cause both fragments to
-                    "disappear" due to the XOR checksum nature. Collisions occurring for fragments in 
+                    ASH uses 64-bit <xref target="SIPHASH"/> over what is essentially PSNP data for a fragment plus its
+                    IS-IS PDU length. The key concern is the probability that two fragments covered by the same
+                    hash produce identical hashes simultaneously. This would cause both fragments to
+                    "cancel out" due to the XOR nature. Collisions between fragments in
                     different node range hashes are irrelevant.
 
                 </t>
@@ -1190,9 +1254,9 @@ Hash $6EB348F808C9AE4E
 
                 <t>
                     Collision probability analysis is complex for the general case, though the birthday paradox gives a
-                    rough estimate of 0.18% collision likelihood for 48-bit hashes in a 1M - sized set. For 64-bit
-                    hashes this intuitively reduces to ~0.000,002,7%. To reflect reality better than
-                    simply relying on statistical assumptions, we instead rely on extensive simulations that
+                    rough estimate of 0.18% collision likelihood for 48-bit hashes in a 1M-sized set. For 64-bit
+                    hashes this reduces to ~0.000,002,7%. Rather than
+                    relying solely on statistical assumptions, we use extensive simulations that
                     mirror real-world conditions.
 </t>
                 <t>
@@ -1215,17 +1279,17 @@ Hash $6EB348F808C9AE4E
 <!--                    are used to derive the numbers.-->
 <!--                </t>-->
                 <t>
-                    Across 64 years of simulation and resulting
-                    36E9 refreshes of all fragments, we observed a total of 142 collisions for 48 bits variant of
-                    <xref target="SIPHASH"/> on the whole set or roughly ~0.000,000,4%, much lower than birthday paradox
+                    Across 64 years of simulated time and the resulting
+                    36E9 fragment refreshes, we observed 142 collisions for the 48-bit variant of
+                    <xref target="SIPHASH"/> across the whole set, or roughly ~0.000,000,4% - much lower than the birthday paradox
                     prediction.
-                    However, assuming a single maximum size
-                    ASH packet covering the whole database only 3 collisions of those matter
+                    However, assuming a single maximum-size
+                    ASH packet covering the entire database, only 3 of those collisions matter
                     - a probability of ~0.000,000,008%,
-                    or roughly 1 occurrence per 20 years. These collisions have an average lifetime of about 10 hours. These
-                    rates are orders of magnitude lower than the birthday paradox predictions, likely because node
-                    IDs act as a consistent "salt," effectively pre-partitioning the probability space. This would be
-                    arguably "good enough" by a long stretch.
+                    or roughly 1 occurrence per 20 years. These collisions have an average lifetime of about 10 hours.
+                    The rates are orders of magnitude lower than birthday paradox predictions, likely because node
+                    IDs act as a consistent "salt" that effectively pre-partitions the probability space. This is
+                    arguably "good enough" by a wide margin.
 
 <!--                    The absolute number of collisions in 36E9 refreshes over set of all fragments-->
 <!--                    is in the order of 200-300 collisions or-->
@@ -1237,12 +1301,12 @@ Hash $6EB348F808C9AE4E
                 </t>
 
                 <t>
-                    Nevertheless, on further investigation of <xref target="SIPHASH"/> using the standard 64 bits 1-3 variant
-                    simulations over the same scenario generate *no* collisions that can be detected. Measuring the CPU
-                    cost of 48-bit variant vs. 64-bit variant or even 64-bit variant of traditional fletcher checksum
-                    is delivering negligible differences of low single digit percent when using modern implementation
-                    techniques. Thus, 64-bit <xref target="SIPHASH"/> 1-3 variant has been chosen and should represent
-                    a very safe margin for even much larger sizes of databases.
+                    Nevertheless, further investigation using the standard 64-bit SipHash 1-3 variant
+                    over the same scenario produces *no* detectable collisions. Measuring the CPU
+                    cost of the 48-bit variant vs. the 64-bit variant (or even 64-bit traditional Fletcher checksum)
+                    shows negligible differences of low single-digit percent with modern implementation
+                    techniques. Thus, 64-bit <xref target="SIPHASH"/> 1-3 has been chosen and should provide
+                    a very safe margin even for much larger databases.
                 </t>
 
 <!--                <t>-->
@@ -1376,8 +1440,8 @@ Hash $6EB348F808C9AE4E
                 Les Ginsberg identified several unresolved issues and contributed alternative ideas to the draft.
             </t>
             <t>
-                Job Snijders initiated discussion of <xref target="SIPHASH"/> being likely a better solution that
-                traditional fletcher checksumming of fragments.
+                Job Snijders initiated the discussion of <xref target="SIPHASH"/> as a likely better solution than
+                traditional Fletcher checksumming of fragments.
             </t>
             <t>
                 <xref target="CLAUDE">Claude (Anthropic)</xref> assisted in reviewing the draft specification, identifying
@@ -1428,7 +1492,7 @@ Hash $6EB348F808C9AE4E
             <reference anchor="SKIP">
                 <front>
                     <title>Skip lists: A probabilistic alternative to balanced trees</title>
-                    <author initials="C.-W." surname="Phan">
+                    <author initials="W." surname="Pugh">
                     </author>
                     <date year="1990"/>
                     <keyword>Communications of the ACM</keyword>
