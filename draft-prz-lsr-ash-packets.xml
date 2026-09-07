@@ -38,7 +38,7 @@
 <?rfc sortrefs="yes" ?>
 <?rfc compact="yes" ?>
 <?rfc subcompact="no" ?>
-<rfc category="exp" docName="draft-prz-lsr-ash-packets-00" ipr="trust200902">
+<rfc category="exp" docName="draft-prz-lsr-ash-packets-01" ipr="trust200902">
 
     <!-- ***** FRONT MATTER ***** -->
 
@@ -86,7 +86,8 @@
 
     <middle>
 
-        <section title="Introduction">
+        <section>
+            <name>Introduction</name>
 
 <!--            <t>-->
 <!--                The document introduces an optional, new type of SNPs called Hierarchical SNP (ASH) that can-->
@@ -166,7 +167,6 @@
             </t>
 
             <t>
-
                 This document limits itself to LSDB sizes on the order of 1E6 fragments
                 and addresses considerations necessary to prevent overly
                 garrulous exchanges
@@ -176,9 +176,19 @@
                 <xref target="further"/>.
             </t>
 
+            <t>
+                The key words "<bcp14>MUST</bcp14>", "<bcp14>MUST NOT</bcp14>", "<bcp14>REQUIRED</bcp14>",
+                "<bcp14>SHALL</bcp14>", "<bcp14>SHALL NOT</bcp14>", "<bcp14>SHOULD</bcp14>",
+                "<bcp14>SHOULD NOT</bcp14>", "<bcp14>RECOMMENDED</bcp14>", "<bcp14>NOT RECOMMENDED</bcp14>",
+                "<bcp14>MAY</bcp14>", and "<bcp14>OPTIONAL</bcp14>" in this document are to be interpreted as
+                described in BCP&nbsp;14 <xref target="RFC2119"/> <xref target="RFC8174"/> when, and only
+                when, they appear in all capitals, as shown here.
+            </t>
+
         </section>
 
-        <section title="Example" anchor="startexample">
+        <section anchor="startexample">
+            <name>Example</name>
             <t>
                 Before diving into precise technical details,
                 an example will help introduce the concepts
@@ -319,14 +329,15 @@ Node1 -> Node2 (after cuts) -> 1 PASH packet(s)
 </t>
             <t>
                 Assuming a PSNP strategy for single-system-ID mismatches, the example generates
-                7 PSNPs from both sides (since PSNPs MUST cover all fragments of a system ID
+                7 PSNPs from both sides (since PSNPs <bcp14>MUST</bcp14> cover all fragments of a system ID
                 that ASH discovered to be mismatched), plus 2 CASHes and 3 PASHes.
                 This compares favorably to the 62 CSNPs that
                 would normally be required on startup.
             </t>
         </section>
         <!--
-        <section title="Dynamic Partitioning" anchor="partition">
+        <section anchor="partition">
+            <name>Dynamic Partitioning</name>
 
             <t>
                 In practical terms, the most interesting problem
@@ -438,7 +449,8 @@ Node1 -> Node2 (after cuts) -> 1 PASH packet(s)
         
         -->
 
-            <section title="Node Ranges" anchor="noderanges">
+            <section anchor="noderanges">
+            <name>Node Ranges</name>
 
                 <t>To discuss node range hashes meaningfully, we refer to hashes covering a wider range of nodes as
                     "less specific" and those covering only a subset of that range as "more specific".
@@ -553,8 +565,10 @@ Claude (Anthropic) assisted in reviewing the draft specification, identifying am
 
             </section>
 
-        <section title="Hash Functions">
-        <section title="Hash Function for a Fragment">
+        <section>
+            <name>Hash Functions</name>
+        <section>
+            <name>Hash Function for a Fragment</name>
             <t>
                 Each fragment generates a 64-bit <xref target="SIPHASH">siphash-1-3</xref> from
                 its full SNP description. The salt key
@@ -563,7 +577,7 @@ Claude (Anthropic) assisted in reviewing the draft specification, identifying am
             </t>
 
             <t>
-                If a fragment hash computes to zero, the value MUST be replaced with
+                If a fragment hash computes to zero, the value <bcp14>MUST</bcp14> be replaced with
                 the constant 1.
             </t>
 
@@ -585,7 +599,8 @@ Hash $6EB348F808C9AE4E
 
         </section>
 
-        <section title="Fast, Incremental, Self-Inverse Hashing Function for Ranges" anchor="hashfn">
+        <section anchor="hashfn">
+            <name>Fast, Incremental, Self-Inverse Hashing Function for Ranges</name>
             <t>
                 Since large-scale deployments must compute significant numbers of hashes over sets of frequently changing
                 fragments, it is highly desirable to use a specialized hash function that supports fast incremental
@@ -634,32 +649,43 @@ Hash $6EB348F808C9AE4E
             -->
 
             <t>
-                If a node range hash computes to zero, the value MUST be replaced with
+                If a node range hash computes to zero, the value <bcp14>MUST</bcp14> be replaced with
                 the constant 1; otherwise the range would assume the semantics of "no fragments present for those nodes".
             </t>
         </section>
     </section>
 
-        <section title="Procedures">
-            <section title="ASH Support Negotiation">
+        <section>
+            <name>Procedures</name>
+            <section>
+            <name>ASH Support Negotiation</name>
                 <t>
-                    IIHs of nodes supporting this extension MUST include a new TLV indicating
-                    support for reception of ASHes.
-                    All nodes on the adjacency MUST advertise
-                    this TLV in their IIHs; otherwise ASHes are not used on that adjacency.
+                    Rather than defining a new, dedicated IIH TLV, support for ASH is negotiated
+                    using the generic Hello Capability TLV defined in <xref target="ID.draft-ginsberg-lsr-hello-capability-00"/>.
+                    This document requests allocation of a single bit (Bit TBD) named "ASH
+                    Support" from the "IS-IS Bit Values for Hello Capability TLV Flags" registry
+                    created by that document; see <xref target="IGP_IANA"/>.
+                </t>
+                <t>
+                    IIHs of nodes supporting this extension <bcp14>MUST</bcp14> set the ASH Support bit in the
+                    Capability Flags of the Hello Capability TLV to indicate support for reception
+                    of ASHes.
+                    All nodes on the adjacency <bcp14>MUST</bcp14> advertise
+                    this bit in their IIHs; otherwise ASHes are not used on that adjacency.
                     Note that a node may choose to only receive and process ASHes while always responding
                     with CSNPs or PSNPs, although this is obviously less beneficial than fully supporting
                     both sending and receiving of ASHes.
                 </t>
                 <t>
-                    The ASH Capability TLV is a zero-length TLV (type TBD) included in IIH PDUs.  Its presence
-                    indicates that the advertising node is capable of receiving and processing ASH packets.  No
-                    value fields are defined at this time; future extensions may add capability flags within
-                    this TLV.
+                    No additional capability information (sub-TLVs) is defined by this document
+                    at this time; future extensions may make use of the sub-TLV mechanism of
+                    <xref target="ID.draft-ginsberg-lsr-hello-capability-00"/> to advertise
+                    additional ASH-related capability information.
                 </t>
             </section>
 
-            <section title="Advertising and Receiving CASHes">
+            <section>
+            <name>Advertising and Receiving CASHes</name>
                 <t>
                     Advertising of standard CSNPs is extended or replaced
                     with CASH advertisements when this feature is supported. Analogous to CSNPs,
@@ -722,13 +748,15 @@ Hash $6EB348F808C9AE4E
 
             </section>
 
-            <section title="Advertising and Receiving PASHes">
+            <section>
+            <name>Advertising and Receiving PASHes</name>
                 <t>Where PSNPs are used, PASHes may extend or substitute the exchange as long as the rules of
                     <xref target="rules"/> are followed.
                 </t>
             </section>
 
-            <section title="Refinement Rules" anchor="rules">
+            <section anchor="rules">
+            <name>Refinement Rules</name>
             <t>
                 ASH exchanges are per-level, analogous to CSNP/PSNP exchanges.  CASH and PASH
                 packets are scoped to the IS-IS level (Level 1 or Level 2) of the adjacency on which they
@@ -741,20 +769,20 @@ Hash $6EB348F808C9AE4E
             </t>
             <t>
                 When a node receives an ASH where any of the contained hashes
-                does not match after recomputation or comparison, it MUST
-                 send PASHes with Merkle hashes covering the mismatched ranges. These new hashes MUST be
+                does not match after recomputation or comparison, it <bcp14>MUST</bcp14>
+                 send PASHes with Merkle hashes covering the mismatched ranges. These new hashes <bcp14>MUST</bcp14> be
                 more specific than the range where the mismatch occurred.
             </t>
             <t>
 
                 Alternatively, instead of more specific PASH hashes,
-                a node MAY choose to send corresponding SNPs
+                a node <bcp14>MAY</bcp14> choose to send corresponding SNPs
                 directly. Sending SNPs immediately may be preferable when the mismatch affects only a
                 small number of LSPs.
 
                 </t>
             <t>In case the mismatched hash has no matching fragments in the local
-                database, the node MUST fall back to CSNPs or CASHes, or send a PASH with hash set to zero
+                database, the node <bcp14>MUST</bcp14> fall back to CSNPs or CASHes, or send a PASH with hash set to zero
                 to request the remote node to either refine the range or use normal IS-IS procedures
                 to synchronize the database.
 
@@ -762,7 +790,7 @@ Hash $6EB348F808C9AE4E
                     The semantics of a zero hash are consistent in this regard: zero indicates that a node is not present
                     in the system or has no fragments, which for ASH purposes is a distinction without a
                     difference. A zero hash consistently indicates that the range
-                    is not covered by ASH compression and MUST be resolved through SNP exchanges or flooding,
+                    is not covered by ASH compression and <bcp14>MUST</bcp14> be resolved through SNP exchanges or flooding,
                     regardless of whether fragments are actually present.
             </t>
 
@@ -782,12 +810,12 @@ Hash $6EB348F808C9AE4E
             <t>
                 If there is a mismatch - or no computation available - for a hash covering just a single system ID (including
                 its pseudonodes), then SNPs for all fragments of that
-                node and its pseudonodes MUST
+                node and its pseudonodes <bcp14>MUST</bcp14>
                 be sent, or the fragments flooded directly.
                 Since this behavior is initiated from both sides of the adjacency, both nodes
                 will ultimately end up with a full set of fragments belonging to the node described by the hash, even
                 when using PSNPs.
-                Other techniques MAY also be used, such as sending a CSNP covering the range from the smallest
+                Other techniques <bcp14>MAY</bcp14> also be used, such as sending a CSNP covering the range from the smallest
                 possible fragment of the system ID to the largest possible fragment.
 
                 <!--                        In case of mismatch or no computation available for a hash covering only a single node-->
@@ -798,7 +826,8 @@ Hash $6EB348F808C9AE4E
         </section>
 
 
-        <section title="CASH PDU Format" anchor="cash-format">
+        <section anchor="cash-format">
+            <name>CASH PDU Format</name>
             <t>
 <!--                ASH PDU Format follows closely CSNP format where instead of CSNP entries the according merkle-->
 <!--                hashes are propagated, i.e. the hashes incorporate strictly the same-->
@@ -821,7 +850,7 @@ Hash $6EB348F808C9AE4E
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 | Length Indicator                    |     1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Version/Protocol ID Extension (1)  |     1
+| Version/Protocol ID Extension (1)   |     1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 | ID Length                           |     1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -841,7 +870,7 @@ Hash $6EB348F808C9AE4E
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 | End System ID                       |  ID Length
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Node Range Hash Entries             |  Variable
+| Node Range Hash TLVs                |  Variable
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ]]></artwork>
             </figure>
@@ -852,7 +881,7 @@ Hash $6EB348F808C9AE4E
                 range are implicitly included (implying as well that all fragments of the range are included).
                 Both the Start and End System IDs are inclusive, meaning fragments from
                 both endpoints are part of the range.  All Node Range Hash Entries
-                MUST fall within the bounds defined by the header's Start and End System IDs.
+                <bcp14>MUST</bcp14> fall within the bounds defined by the header's Start and End System IDs.
 
 
 <!--                Start and End System IDs are or the usual ID Length and indicate, just like CSNP do,-->
@@ -862,7 +891,27 @@ Hash $6EB348F808C9AE4E
             </t>
 
             <t>
-                The variable length fields are a sorted sequence of Node Range Hash Entries
+                Unlike CSNPs, which place LSP Entries directly in a dedicated LSP Entries TLV
+                (type 9) whose value is itself just a flat sequence of entries, ASH packets carry
+                their Node Range Hash Entries inside a new Node Range Hash TLV (type TBD), following
+                the standard IS-IS TLV convention of a 1-octet Type, 1-octet Length, and Value:
+            </t>
+
+        <figure>
+            <artwork align="left" name="" type="" alt=""><![CDATA[
+                                       No. of Octets
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Type = Node Range Hash TLV (TBD)    |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Length                              |     1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Node Range Hash Entries             |  Variable
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+]]></artwork>
+        </figure>
+
+            <t>
+                The Value of a Node Range Hash TLV is a sorted sequence of Node Range Hash Entries
                 in the following format.
             </t>
 
@@ -887,39 +936,45 @@ Hash $6EB348F808C9AE4E
             </t>
 
             <t>
-                With the standard ID Length of 6, each entry is 6 + 6 + 8 = 20 octets, so about 70
-                entries fit into a standard 1500-byte MTU.
+                With the standard ID Length of 6, each entry is 6 + 6 + 8 = 20 octets. Since a TLV's Length field
+                is a single octet, a single Node Range Hash TLV can carry at most 12 entries (12 * 20 = 240 octets,
+                leaving room within the 255-octet maximum TLV value size). Since Node Range Hash Entries are treated
+                as a single logical sequence regardless of which TLV they appear in, a CASH or PASH PDU <bcp14>MAY</bcp14>, and
+                typically will, carry multiple Node Range Hash TLVs to fit the roughly 70 entries that fit into a
+                standard 1500-byte MTU, exactly as CSNPs carry multiple LSP Entries TLVs when needed.
             </t>
 
 
             <t>
-                The ranges in a CASH MUST be sorted by Range Start System ID. The ranges MUST NOT overlap.
-                A receiver encountering overlapping ranges MUST treat the union of those
+                The ranges in a CASH <bcp14>MUST</bcp14> be sorted by Range Start System ID across the concatenation of all Node
+                Range Hash TLVs in the PDU, in the order the TLVs appear. The ranges <bcp14>MUST NOT</bcp14> overlap.
+                A receiver encountering overlapping ranges <bcp14>MUST</bcp14> treat the union of those
                 ranges as a single range with a zero hash. Any range exceeding the CASH header bounds
-                MUST be clamped to fit within the CASH range and treated as a zero hash.
-                Any range whose end is equal to or smaller than its start MUST be discarded.
-                A node SHOULD log such events since they most likely indicate
+                <bcp14>MUST</bcp14> be clamped to fit within the CASH range and treated as a zero hash.
+                Any range whose end is equal to or smaller than its start <bcp14>MUST</bcp14> be discarded.
+                A node <bcp14>SHOULD</bcp14> log such events since they most likely indicate
                 protocol implementation problems or attacks.
             </t>
 
             <t>
                 Any node IDs that are not covered by the ranges in a CASH - either because there are gaps between
-                the advertised ranges, or between those ranges and the ASH's Start and End System IDs - MUST be
+                the advertised ranges, or between those ranges and the ASH's Start and End System IDs - <bcp14>MUST</bcp14> be
                 treated as missing. Consequently, if a node detects that it holds Merkle hashes for LSPs that are
-                not covered by a received CASH, it MUST behave as it would in the same situation with a CSNP, namely
+                not covered by a received CASH, it <bcp14>MUST</bcp14> behave as it would in the same situation with a CSNP, namely
                 by flooding the missing LSPs.
             </t>
 
             <t>
-                As with CSNPs, a CASH whose first range covers the first node in the database MUST use
+                As with CSNPs, a CASH whose first range covers the first node in the database <bcp14>MUST</bcp14> use
                 0000.0000.0000 as the start system ID in its packet header so that missing nodes can be detected. The
-                same rule applies at the other end: a CASH whose range covers the last node MUST
+                same rule applies at the other end: a CASH whose range covers the last node <bcp14>MUST</bcp14>
                 indicate this so that any missing trailing nodes are detectable.
             </t>
 
         </section>
 
-        <section title="PASH PDU Format" anchor="pash-format">
+        <section anchor="pash-format">
+            <name>PASH PDU Format</name>
             <t>
 
 
@@ -936,7 +991,7 @@ Hash $6EB348F808C9AE4E
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 | Length Indicator                    |     1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Version/Protocol ID Extension (1)  |     1
+| Version/Protocol ID Extension (1)   |     1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 | ID Length                           |     1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -952,23 +1007,26 @@ Hash $6EB348F808C9AE4E
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 | Source ID                           |  ID Length + 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Node Range Hash Entries             |  Variable
+| Node Range Hash TLVs                |  Variable
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ]]></artwork>
             </figure>
 
             <t>
-                The Variable Length Fields carry the same Node Range Hash Entry format as in CASHes.
+                As with CASHes, the variable length fields are one or more Node Range Hash TLVs
+                (type TBD, the same TLV type used in CASHes), each carrying the same Node Range
+                Hash Entry format described in <xref target="cash-format"/>.
             </t>
 
             <t>PASHes are equivalent to PSNPs in that entries are treated independently:
                 gaps between entries have no semantics, entries need not be sorted, and may overlap.
-                Any range whose end is equal to or smaller than its start MUST be discarded. A node SHOULD log such events since they most likely indicate
+                Any range whose end is equal to or smaller than its start <bcp14>MUST</bcp14> be discarded. A node <bcp14>SHOULD</bcp14> log such events since they most likely indicate
                 protocol implementation problems or attacks.
             </t>
         </section>
 
-        <section title="CASH Example">
+        <section>
+            <name>CASH Example</name>
 
 
             <t>A more detailed example will clarify CASHes further. Consider an LSDB with nodes having system IDs of
@@ -993,6 +1051,13 @@ Hash $6EB348F808C9AE4E
             </t>
 
             <t>
+                For readability, the figures below show the Node Range Hash TLV Type/Length
+                header (see <xref target="cash-format"/>) only for the first such TLV in each
+                packet; entries beyond what fits in that first TLV (at most 12 per TLV) continue
+                in additional Node Range Hash TLVs whose headers are omitted for brevity.
+            </t>
+
+            <t>
                 In a stable state, reasonable compression can deliver 129 "first-order" leaves - each containing fragments
                 from 2 systems (64 fragments total) - requiring roughly 129 / 70 ~ 2 packets. The first of these
                 "first-order" packets would look approximately like this:
@@ -1014,6 +1079,9 @@ Hash $6EB348F808C9AE4E
 +--------------------------------------------+
 |  End System ID:   0000.0000.00A0           | // 80 ranges covering 160 nodes
 +--------------------------------------------+
+|  Type = Node Range Hash TLV (TBD)          |
++--------------------------------------------+
+|  Length                                    |
 +--------------------------------------------+
 |  Start System ID: 1000.0000.0000           |
 +--------------------------------------------+
@@ -1021,13 +1089,15 @@ Hash $6EB348F808C9AE4E
 +--------------------------------------------+
 |              Merkle Hash                   |
 +--------------------------------------------+
-..
+...
 |  Start System ID: 1000.0000.008E           |
 +--------------------------------------------+
 |  End System ID:   1000.0000.00A0           |
 +--------------------------------------------+
 |              Merkle Hash                   | // 64 fragments over 2 systems
 +--------------------------------------------+
+        ... // remaining entries continue in further Node Range Hash TLVs,
+            // each with its own Type/Length header (omitted here for brevity)
 ]]></artwork>
             </figure>
 
@@ -1053,6 +1123,10 @@ Hash $6EB348F808C9AE4E
 +--------------------------------------------+
 |  End System ID:   FFFF.FFFF.FFFF           |
 +--------------------------------------------+
+|  Type = Node Range Hash TLV (TBD)          |
++--------------------------------------------+
+|  Length                                    |
++--------------------------------------------+
 |  Start System ID: 1000.0000.0000           |
 +--------------------------------------------+
 |  End System ID:   1000.0000.0010           |
@@ -1066,15 +1140,19 @@ Hash $6EB348F808C9AE4E
 +--------------------------------------------+
 |              Merkle Hash                   |
 +--------------------------------------------+
+        ... // remaining entries continue in further Node Range Hash TLVs,
+            // each with its own Type/Length header (omitted here for brevity)
 ]]></artwork>
             </figure>
 
         </section>
 
 
-        <section title="Further Considerations" toc="default" anchor="further">
+        <section toc="default" anchor="further">
+            <name>Further Considerations</name>
 
-            <section title="IS-IS Scale Envelope" toc="default" anchor="envelope">
+            <section toc="default" anchor="envelope">
+            <name>IS-IS Scale Envelope</name>
 <!--            <t>-->
 <!--                As first, obvious observation, ASHs are of negligible value on small networks of tens of nodes-->
 <!--                and hundreds of fragments. Arguably, perfectly correctly implemented flooding is enough at any size (which is-->
@@ -1164,7 +1242,8 @@ Hash $6EB348F808C9AE4E
 
             </section>
 
-            <section title="Maximum Advisable Hash Coverage">
+            <section>
+            <name>Maximum Advisable Hash Coverage</name>
                 <t>
 <!--                Although the mechanism can be applied to the point where a single merkle hash represents-->
 <!--                an arbitrarily large database, such a single hash is not advisable. Limiting hash coverage-->
@@ -1195,7 +1274,8 @@ Hash $6EB348F808C9AE4E
                 </t>
             </section>
 
-            <section title="Hash Collision Probabilities" anchor="collisions">
+            <section anchor="collisions">
+            <name>Hash Collision Probabilities</name>
 <!--                <t>-->
 <!--                    As first observation it is worth noting that even with CSNPs or PSNPs IS-IS does-->
 <!--                    harbor a corner case where LSDB may not end up synchronized, especially on a node restart.-->
@@ -1360,7 +1440,8 @@ Hash $6EB348F808C9AE4E
                 </t>
             </section>
 
-            <section title="Impact of Packet Losses">
+            <section>
+            <name>Impact of Packet Losses</name>
                 <t>
                     Hashes covering large numbers of fragments are more vulnerable to packet losses, as each lost packet
                     affects a much larger portion of the LSDB during synchronization. Implementations can choose ASH
@@ -1375,7 +1456,8 @@ Hash $6EB348F808C9AE4E
                 </t>
             </section>
 
-            <section title="Decompression and Caching/Comparison Optimizations">
+            <section>
+            <name>Decompression and Caching/Comparison Optimizations</name>
                 <t>
 <!--                    As mentioned above a node may apply many strategies to speed up decompression.-->
 <!--                    E.g. LSPs missing in ASHs as not covered by ranges are clearly "missing in action" and can-->
@@ -1408,27 +1490,77 @@ Hash $6EB348F808C9AE4E
 
         </section>
 
-        <section title="Security Considerations" toc="default">
+        <section toc="default">
+            <name>Security Considerations</name>
 
             <t>ASH security relies on the same mechanisms protecting IS-IS PDU integrity.
             </t>
 
         </section> <!-- end of security considerations -->
 
-        <section anchor="IGP_IANA" title="IANA Section">
-            <t>TBD
+        <section anchor="IGP_IANA">
+            <name>IANA Considerations</name>
+            <t>
+                IANA is requested to allocate a bit from the "IS-IS Bit Values for Hello
+                Capability TLV Flags" registry defined in <xref target="ID.draft-ginsberg-lsr-hello-capability-00"/>,
+                named "ASH Support", indicating that the advertising node is capable of
+                receiving and processing ASH (CASH/PASH) packets.
+            </t>
+            <t>
+                IANA is requested to allocate a codepoint (type TBD) from the "IS-IS TLV
+                Codepoints" registry for the Node Range Hash TLV, valid within CASH and PASH
+                PDUs as defined in <xref target="cash-format"/> and <xref target="pash-format"/>.
+            </t>
+            <t>
+                IANA is requested to allocate two new codepoints from the "PDU Types" registry
+                under "Intermediate System to Intermediate System (IS-IS) Parameters", one for
+                the CASH PDU and one for the PASH PDU, analogous to the existing Level 1 and
+                Level 2 Complete/Partial SNP codepoints, as follows:
+            </t>
+            <table>
+                <thead>
+                    <tr>
+                        <th align="center">Value</th>
+                        <th align="left">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td align="center">TBD1</td>
+                        <td align="left">Level 1 CASH</td>
+                    </tr>
+                    <tr>
+                        <td align="center">TBD2</td>
+                        <td align="left">Level 2 CASH</td>
+                    </tr>
+                    <tr>
+                        <td align="center">TBD3</td>
+                        <td align="left">Level 1 PASH</td>
+                    </tr>
+                    <tr>
+                        <td align="center">TBD4</td>
+                        <td align="left">Level 2 PASH</td>
+                    </tr>
+                </tbody>
+            </table>
+            <t>
+                As with existing SNP PDU types, separate Level 1 and Level 2 codepoints are
+                requested for both CASH and PASH so that the PDU Type field alone identifies both
+                the packet's function and the level it applies to.
             </t>
         </section>
 
         <!-- 2 -->
-        <section title="Contributors" toc="default">
+        <section toc="default">
+            <name>Contributors</name>
 
             <t>TBD</t>
 
         </section> <!-- end of contributors -->
 
         <!-- 2 -->
-        <section title="Acknowledgement" toc="default">
+        <section toc="default">
+            <name>Acknowledgement</name>
             <t>
 
                 People have been talking about "compressing CSNPs" for a very long time, reportedly going back to when
@@ -1454,6 +1586,32 @@ Hash $6EB348F808C9AE4E
     </middle>
 
     <back>
+
+        <references title="Normative References">
+
+            <reference anchor="RFC2119">
+                <front>
+                    <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+                    <author initials="S." surname="Bradner" fullname="S. Bradner"/>
+                    <date month="March" year="1997"/>
+                </front>
+                <seriesInfo name="BCP" value="14"/>
+                <seriesInfo name="RFC" value="2119"/>
+                <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+            </reference>
+
+            <reference anchor="RFC8174">
+                <front>
+                    <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+                    <author initials="B." surname="Leiba" fullname="B. Leiba"/>
+                    <date month="May" year="2017"/>
+                </front>
+                <seriesInfo name="BCP" value="14"/>
+                <seriesInfo name="RFC" value="8174"/>
+                <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+            </reference>
+
+        </references> <!-- end of normative references -->
 
         <references title="Informative References">
 
@@ -1510,7 +1668,7 @@ Hash $6EB348F808C9AE4E
                 </front>
             </reference>
 
-            <reference anchor="ID.draft-ietf-lsr-distoptflood-11">
+            <reference anchor="ID.draft-ietf-lsr-distoptflood-11" target="https://www.ietf.org/id/draft-ietf-lsr-distoptflood-11.txt">
                 <front>
                     <title>IS-IS Distributed Flooding Reduction</title>
                     <author initials="R." surname="White et al.">
@@ -1518,14 +1676,23 @@ Hash $6EB348F808C9AE4E
                     </author>
                     <date month="Oct" year="2025"/>
                 </front>
-                <format target="https://www.ietf.org/id/draft-ietf-lsr-distoptflood-11.txt"
-                        type="TXT"/>
+            </reference>
+
+            <reference anchor="ID.draft-ginsberg-lsr-hello-capability-00" target="https://www.ietf.org/id/draft-ginsberg-lsr-hello-capability-00.txt">
+                <front>
+                    <title>IS-IS Hello Capability</title>
+                    <author initials="L." surname="Ginsberg et al.">
+                        <organization/>
+                    </author>
+                    <date month="Aug" year="2026"/>
+                </front>
             </reference>
 
 
         </references> <!-- end of informative references -->
 
-        <section title="Reference Implementation of SIP Fragment Hashing" anchor="refcode">
+        <section anchor="refcode">
+            <name>Reference Implementation of SIP Fragment Hashing</name>
 
             <figure>
             <artwork align="center" name="" type="" alt=""><![CDATA[
