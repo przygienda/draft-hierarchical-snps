@@ -38,7 +38,7 @@
 <?rfc sortrefs="yes" ?>
 <?rfc compact="yes" ?>
 <?rfc subcompact="no" ?>
-<rfc category="exp" docName="draft-prz-lsr-ash-packets-01" ipr="trust200902">
+<rfc category="exp" docName="draft-prz-lsr-ash-packets-02" ipr="trust200902">
 
     <!-- ***** FRONT MATTER ***** -->
 
@@ -971,6 +971,15 @@ Hash $6EB348F808C9AE4E
                 indicate this so that any missing trailing nodes are detectable.
             </t>
 
+            <t>
+                As with PASHes (<xref target="pash-format"/>), deployments combining ASH with
+                <xref target="RFC9681"/> fast flooding <bcp14>SHOULD</bcp14> reserve sufficient
+                space within the PDU for a Flooding Parameters TLV, along with any other TLVs
+                that may need to coexist in the same PDU, when computing how many Node Range
+                Hash TLVs and entries fit within the MTU, as described in
+                <xref target="envelope"/> and <xref target="max-coverage"/>.
+            </t>
+
         </section>
 
         <section anchor="pash-format">
@@ -1022,6 +1031,16 @@ Hash $6EB348F808C9AE4E
                 gaps between entries have no semantics, entries need not be sorted, and may overlap.
                 Any range whose end is equal to or smaller than its start <bcp14>MUST</bcp14> be discarded. A node <bcp14>SHOULD</bcp14> log such events since they most likely indicate
                 protocol implementation problems or attacks.
+            </t>
+
+            <t>
+                <xref target="RFC9681"/> defines a Flooding Parameters TLV that may be carried in PSNPs to
+                signal fast-flooding-related parameters. Since PASHes are structurally equivalent to PSNPs,
+                deployments combining ASH with <xref target="RFC9681"/> fast flooding <bcp14>SHOULD</bcp14>
+                reserve sufficient space within the PDU for the Flooding Parameters TLV, along with any
+                other TLVs that may need to coexist in the same PDU, when computing how many Node Range
+                Hash TLVs and entries fit within the MTU, as described in
+                <xref target="envelope"/> and <xref target="max-coverage"/>.
             </t>
         </section>
 
@@ -1242,7 +1261,7 @@ Hash $6EB348F808C9AE4E
 
             </section>
 
-            <section>
+            <section anchor="max-coverage">
             <name>Maximum Advisable Hash Coverage</name>
                 <t>
 <!--                Although the mechanism can be applied to the point where a single merkle hash represents-->
@@ -1688,6 +1707,17 @@ Hash $6EB348F808C9AE4E
                 </front>
             </reference>
 
+            <reference anchor="RFC9681">
+                <front>
+                    <title>IS-IS Fast Flooding</title>
+                    <author initials="B." surname="Decraene et al.">
+                        <organization/>
+                    </author>
+                    <date month="November" year="2024"/>
+                </front>
+                <seriesInfo name="RFC" value="9681"/>
+                <seriesInfo name="DOI" value="10.17487/RFC9681"/>
+            </reference>
 
         </references> <!-- end of informative references -->
 
