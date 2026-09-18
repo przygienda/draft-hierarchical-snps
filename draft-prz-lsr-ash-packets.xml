@@ -38,7 +38,7 @@
 <?rfc sortrefs="yes" ?>
 <?rfc compact="yes" ?>
 <?rfc subcompact="no" ?>
-<rfc category="exp" docName="draft-prz-lsr-ash-packets-02" ipr="trust200902">
+<rfc category="exp" docName="draft-prz-lsr-ash-packets-03" ipr="trust200902">
 
     <!-- ***** FRONT MATTER ***** -->
 
@@ -662,19 +662,56 @@ Hash $6EB348F808C9AE4E
                 <t>
                     Rather than defining a new, dedicated IIH TLV, support for ASH is negotiated
                     using the generic Hello Capability TLV defined in <xref target="ID.draft-ginsberg-lsr-hello-capability-00"/>.
-                    This document requests allocation of a single bit (Bit TBD) named "ASH
-                    Support" from the "IS-IS Bit Values for Hello Capability TLV Flags" registry
-                    created by that document; see <xref target="IGP_IANA"/>.
+                    This document requests allocation of two bits (Bits TBD) from the "IS-IS Bit
+                    Values for Hello Capability TLV Flags" registry created by that document; see
+                    <xref target="IGP_IANA"/>:
                 </t>
                 <t>
-                    IIHs of nodes supporting this extension <bcp14>MUST</bcp14> set the ASH Support bit in the
-                    Capability Flags of the Hello Capability TLV to indicate support for reception
-                    of ASHes.
-                    All nodes on the adjacency <bcp14>MUST</bcp14> advertise
-                    this bit in their IIHs; otherwise ASHes are not used on that adjacency.
-                    Note that a node may choose to only receive and process ASHes while always responding
-                    with CSNPs or PSNPs, although this is obviously less beneficial than fully supporting
-                    both sending and receiving of ASHes.
+                    <list style="symbols">
+                        <t><spanx style="strong">ASH_RX</spanx> ("ASH Reception Capable"): the
+                        advertising node is willing and able to receive and process CASH/PASH
+                        packets on this adjacency in place of CSNPs/PSNPs.</t>
+                        <t><spanx style="strong">ASH_TX</spanx> ("ASH Transmission Capable"): the
+                        advertising node may originate CASH/PASH packets on this adjacency in
+                        place of CSNPs/PSNPs.</t>
+                    </list>
+                </t>
+                <t>
+                    A single combined "ASH capable" bit was considered and rejected in favor of
+                    these two independent bits: implementations commonly wish to enable ASH
+                    asymmetrically -- for example decoding and verifying received ASH packets from
+                    a peer while still originating ordinary CSNPs/PSNPs itself (a conservative or
+                    "canary" rollout of newly written decode logic), or the converse. A single bit
+                    cannot convey to the peer which direction(s) are actually safe or expected,
+                    whereas two independent bits let each side advertise exactly what it will
+                    accept and what it may send.
+                </t>
+                <t>
+                    A node <bcp14>MUST NOT</bcp14> originate CASH/PASH packets on an adjacency
+                    unless the peer has most recently advertised <spanx style="strong">ASH_RX</spanx>
+                    on that adjacency. A node <bcp14>MUST</bcp14> treat an adjacency as not ASH
+                    capable for reception -- i.e. fall back to ordinary CSNP/PSNP processing --
+                    whenever it has not itself advertised <spanx style="strong">ASH_RX</spanx>,
+                    regardless of what the peer sends; receipt of a CASH/PASH packet while
+                    <spanx style="strong">ASH_RX</spanx> is not being advertised is anomalous input
+                    and <bcp14>MUST NOT</bcp14> be treated as fatal to the adjacency -- the
+                    implementation SHOULD log the event and fall back to requesting a full
+                    CSNP/LSP resynchronization on that adjacency. Loss of the peer's Hello
+                    Capability TLV (adjacency restart, or a peer that does not implement
+                    <xref target="ID.draft-ginsberg-lsr-hello-capability-00"/> at all) is
+                    equivalent to both bits being clear.
+                </t>
+                <t>
+                    On broadcast circuits, each level's IIH is a distinct PDU, so the two bits are
+                    advertised, and can differ, independently per level. On point-to-point
+                    circuits a single IIH is shared by whichever levels are enabled on that
+                    circuit; the Hello Capability TLV of
+                    <xref target="ID.draft-ginsberg-lsr-hello-capability-00"/> is not level-scoped,
+                    so on a point-to-point circuit running both Level 1 and Level 2,
+                    <spanx style="strong">ASH_RX</spanx> and <spanx style="strong">ASH_TX</spanx>
+                    necessarily apply identically to both levels; an implementation
+                    <bcp14>MUST NOT</bcp14> attempt to advertise or negotiate them differently per
+                    level on such a circuit.
                 </t>
                 <t>
                     No additional capability information (sub-TLVs) is defined by this document
@@ -1520,10 +1557,11 @@ Hash $6EB348F808C9AE4E
         <section anchor="IGP_IANA">
             <name>IANA Considerations</name>
             <t>
-                IANA is requested to allocate a bit from the "IS-IS Bit Values for Hello
+                IANA is requested to allocate two bits from the "IS-IS Bit Values for Hello
                 Capability TLV Flags" registry defined in <xref target="ID.draft-ginsberg-lsr-hello-capability-00"/>,
-                named "ASH Support", indicating that the advertising node is capable of
-                receiving and processing ASH (CASH/PASH) packets.
+                named "ASH_RX" and "ASH_TX", indicating respectively that the advertising node
+                is willing to receive and process, and/or may originate, ASH (CASH/PASH) packets
+                on that adjacency in place of CSNPs/PSNPs.
             </t>
             <t>
                 IANA is requested to allocate a codepoint (type TBD) from the "IS-IS TLV
