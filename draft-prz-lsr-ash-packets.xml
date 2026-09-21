@@ -38,7 +38,7 @@
 <?rfc sortrefs="yes" ?>
 <?rfc compact="yes" ?>
 <?rfc subcompact="no" ?>
-<rfc category="exp" docName="draft-prz-lsr-ash-packets-03" ipr="trust200902">
+<rfc category="exp" docName="draft-prz-lsr-ash-packets-04" ipr="trust200902">
 
     <!-- ***** FRONT MATTER ***** -->
 
@@ -695,7 +695,7 @@ Hash $6EB348F808C9AE4E
                     regardless of what the peer sends; receipt of a CASH/PASH packet while
                     <spanx style="strong">ASH_RX</spanx> is not being advertised is anomalous input
                     and <bcp14>MUST NOT</bcp14> be treated as fatal to the adjacency -- the
-                    implementation SHOULD log the event and fall back to requesting a full
+                    implementation <bcp14>SHOULD</bcp14> log the event and fall back to requesting a full
                     CSNP/LSP resynchronization on that adjacency. Loss of the peer's Hello
                     Capability TLV (adjacency restart, or a peer that does not implement
                     <xref target="ID.draft-ginsberg-lsr-hello-capability-00"/> at all) is
@@ -1544,7 +1544,59 @@ Hash $6EB348F808C9AE4E
                 </t>
             </section>
 
+            <section anchor="reconciliation-pacing">
+            <name>Reconciliation Pacing and Amplification Avoidance</name>
+                <t>
+                    In short: do not send a new CASH for a level while the PASH reconciliation triggered by
+                    the previous one is still unresolved. A node that finds a mismatch on receipt of a CASH
+                    is expected to bisect the disputed range(s) and answer with one or more PASHs covering
+                    the halves, recursing on any half that still mismatches until the recursion bottoms out
+                    at a single node or an empty (zero-hash) sub-range, at which point normal PSNP/flooding
+                    takes over for that sub-range (see <xref target="rules"/>). This reactive PASH exchange
+                    and the node's own periodic re-issuance of CASH are logically independent triggers
+                    writing into the same reconciliation state, and an implementation <bcp14>MUST NOT</bcp14> let them run
+                    uncoordinated.
+                </t>
+                <t>
+                    Concretely, if a node launches a fresh periodic CASH probe of a level while a previous
+                    probe's reactive PASH bisection for that same level has not yet finished draining, both
+                    probes typically rediscover very nearly the same disagreement and each starts its own,
+                    independent cut-and-queue chain. Two overlapping chains cost roughly twice the PASH/PSNP
+                    traffic of one, three cost roughly three times, and so on with no natural ceiling: on a
+                    real ~6,700-fragment/40-node lab, enabling ASH domain-wide simultaneously drove PSNP
+                    triggers to roughly five times the total fragment count with the count still climbing
+                    when observed, where a single, uncontested reconciliation would be expected to cost on
+                    the order of one bisection tree. This is a straightforward amplification failure, not a
+                    scale artifact of the topology or hash function: it reproduces at even moderate scale
+                    whenever more than one probe is allowed to be in flight for the same peer and level.
+                </t>
+                <t>
+                    Implementations <bcp14>MUST</bcp14> bound the number of reconciliation attempts in flight for a given
+                    peer and level to at most one: a node <bcp14>MUST NOT</bcp14> generate and send a new periodic CASH for
+                    a level while any PASH work it previously queued for that level is still outstanding
+                    (i.e. while the reconciliation range tree for that peer/level session is non-empty).
+                    Deferring the CASH for that cycle and falling back to ordinary CSNP framing until the
+                    outstanding reconciliation drains is sufficient; the next periodic cycle can safely
+                    re-probe once the queue is empty. This turns each real divergence into a single bounded
+                    bisection rather than an unbounded number of overlapping ones, and costs nothing beyond
+                    one fallback CSNP per deferred cycle. Implementations <bcp14>SHOULD</bcp14> expose a counter for cycles
+                    deferred this way, both to size the pacing interval and to detect a peer that is failing
+                    to drain its queue (e.g. because PASH is not implemented on that peer, or because the
+                    LSDB is changing faster than the pacing rate can keep up with).
+                </t>
+                <t>
+                    This same discipline is why any recursion terminal - a range that has bisected down to a
+                    single node or an empty sub-range - <bcp14>MUST</bcp14> be handed to normal PSNP/flooding immediately
+                    rather than paced through the same queue as further probes: pacing the terminal case
+                    behind still-recursing probes both delays the one step that actually repairs the LSDB
+                    and, if that queue is what a new CASH probe is waiting to drain, needlessly extends the
+                    window during which a second probe could otherwise have been (incorrectly) allowed to
+                    start.
+                </t>
+            </section>
+
         </section>
+
 
         <section toc="default">
             <name>Security Considerations</name>
