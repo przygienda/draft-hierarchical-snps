@@ -38,7 +38,7 @@
 <?rfc sortrefs="yes" ?>
 <?rfc compact="yes" ?>
 <?rfc subcompact="no" ?>
-<rfc category="exp" docName="draft-prz-lsr-ash-packets-04" ipr="trust200902">
+<rfc category="exp" docName="draft-prz-lsr-ash-packets-05" ipr="trust200902">
 
     <!-- ***** FRONT MATTER ***** -->
 
@@ -1541,6 +1541,18 @@ Hash $6EB348F808C9AE4E
                     - the cached hash can be quickly updated by
                     simply XORing out the next-after-B node Merkle hash.
 
+                </t>
+                <t>
+                    Implementations that adapt ASH compression from observed comparison results should distinguish
+                    positive evidence from negative evidence. A matching range hash is strong evidence that every
+                    node covered by that range matched and can therefore justify maintaining or increasing
+                    compression for those nodes. In contrast, a mismatching coarse range proves only that at least
+                    one covered node differs; it does not identify which node or nodes caused the mismatch.
+                    Implementations should therefore avoid assigning that negative result to every node in the
+                    range. Instead, they should use progressively finer PASH comparisons, and ultimately SNP
+                    comparison or flooding, to obtain sufficiently specific evidence before reducing compression
+                    for individual nodes. Otherwise, a small localized change can incorrectly drive an entire
+                    coarse range toward little or no compression.
                 </t>
             </section>
 
