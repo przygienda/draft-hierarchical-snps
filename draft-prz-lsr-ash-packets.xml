@@ -38,7 +38,7 @@
 <?rfc sortrefs="yes" ?>
 <?rfc compact="yes" ?>
 <?rfc subcompact="no" ?>
-<rfc category="exp" docName="draft-prz-lsr-ash-packets-05" ipr="trust200902">
+<rfc category="exp" docName="draft-prz-lsr-ash-packets-06" ipr="trust200902">
 
     <!-- ***** FRONT MATTER ***** -->
 
@@ -1559,19 +1559,24 @@ Hash $6EB348F808C9AE4E
             <section anchor="reconciliation-pacing">
             <name>Reconciliation Pacing and Amplification Avoidance</name>
                 <t>
-                    In short: do not send a new CASH for a level while the PASH reconciliation triggered by
+                    In short: do not send a new CASH for a level while the reconciliation triggered by
                     the previous one is still unresolved. A node that finds a mismatch on receipt of a CASH
                     is expected to bisect the disputed range(s) and answer with one or more PASHs covering
                     the halves, recursing on any half that still mismatches until the recursion bottoms out
                     at a single node or an empty (zero-hash) sub-range, at which point normal PSNP/flooding
                     takes over for that sub-range (see <xref target="rules"/>). This reactive PASH exchange
-                    and the node's own periodic re-issuance of CASH are logically independent triggers
+                    and its terminal PSNP/flooding repair are one logical reconciliation attempt, even though
+                    they may occupy different implementation queues at different times. The attempt remains
+                    unresolved until the terminal PSNPs have been processed and any resulting LSP
+                    transmissions and retransmissions have drained. This reactive exchange and the node's
+                    own periodic re-issuance of CASH are logically independent triggers
                     writing into the same reconciliation state, and an implementation <bcp14>MUST NOT</bcp14> let them run
                     uncoordinated.
                 </t>
                 <t>
                     Concretely, if a node launches a fresh periodic CASH probe of a level while a previous
-                    probe's reactive PASH bisection for that same level has not yet finished draining, both
+                    probe's reactive PASH bisection or terminal PSNP/LSP repair for that same level has not
+                    yet finished draining, both
                     probes typically rediscover very nearly the same disagreement and each starts its own,
                     independent cut-and-queue chain. Two overlapping chains cost roughly twice the PASH/PSNP
                     traffic of one, three cost roughly three times, and so on with no natural ceiling: on a
@@ -1585,15 +1590,21 @@ Hash $6EB348F808C9AE4E
                 <t>
                     Implementations <bcp14>MUST</bcp14> bound the number of reconciliation attempts in flight for a given
                     peer and level to at most one: a node <bcp14>MUST NOT</bcp14> generate and send a new periodic CASH for
-                    a level while any PASH work it previously queued for that level is still outstanding
-                    (i.e. while the reconciliation range tree for that peer/level session is non-empty).
-                    Deferring the CASH for that cycle and falling back to ordinary CSNP framing until the
-                    outstanding reconciliation drains is sufficient; the next periodic cycle can safely
-                    re-probe once the queue is empty. This turns each real divergence into a single bounded
+                    a level while any work from the previous reconciliation attempt remains outstanding.
+                    This includes not only entries in the reconciliation range tree for that peer/level
+                    session, but also terminal PSNP entries and resulting LSP transmit or retransmit work.
+                    An implementation <bcp14>MUST NOT</bcp14> treat removal of a terminal range from the PASH range tree
+                    as completion if repair packets derived from that range remain queued.
+                    Deferring the CASH for that cycle is sufficient; the next periodic cycle can safely
+                    re-probe once the entire reconciliation chain has drained. This turns each real divergence into a single bounded
                     bisection rather than an unbounded number of overlapping ones, and costs nothing beyond
-                    one fallback CSNP per deferred cycle. Implementations <bcp14>SHOULD</bcp14> expose a counter for cycles
+                    delaying a redundant probe. An implementation that has not yet completed an initial,
+                    full-coverage CASH exchange for the current peer session <bcp14>MAY</bcp14> use ordinary CSNP framing
+                    as a conservative fallback; after such an initial exchange, periodic CSNPs need not be
+                    introduced merely because a CASH cycle was deferred. Implementations <bcp14>SHOULD</bcp14> expose a counter for cycles
                     deferred this way, both to size the pacing interval and to detect a peer that is failing
-                    to drain its queue (e.g. because PASH is not implemented on that peer, or because the
+                    to finish reconciliation (e.g. because PASH is not implemented on that peer, a terminal
+                    PSNP or LSP remains queued, or because the
                     LSDB is changing faster than the pacing rate can keep up with).
                 </t>
                 <t>
@@ -1601,9 +1612,9 @@ Hash $6EB348F808C9AE4E
                     single node or an empty sub-range - <bcp14>MUST</bcp14> be handed to normal PSNP/flooding immediately
                     rather than paced through the same queue as further probes: pacing the terminal case
                     behind still-recursing probes both delays the one step that actually repairs the LSDB
-                    and, if that queue is what a new CASH probe is waiting to drain, needlessly extends the
-                    window during which a second probe could otherwise have been (incorrectly) allowed to
-                    start.
+                    and extends the lifetime of the current reconciliation attempt. Handing the terminal
+                    range to PSNP/flooding does not end that lifetime: the implementation <bcp14>MUST</bcp14> continue
+                    suppressing new CASH probes until the derived repair work has drained.
                 </t>
             </section>
 
