@@ -1601,6 +1601,16 @@ Hash $6EB348F808C9AE4E
                     reconciliation attempt; completion occurs only after the required PASHes, PSNPs, and
                     resulting LSP transmissions and retransmissions have completed.
                 </t>
+                <t>
+                    ASH repair can generate a large number of PSNP entries while received repair LSPs
+                    simultaneously require acknowledgment. When an implementation schedules both classes
+                    of entry through the same PSNP transmission mechanism, it <bcp14>SHOULD</bcp14> transmit
+                    acknowledgments for received LSPs before PSNP entries generated to request or describe
+                    further reconciliation. Delaying those acknowledgments behind a reconciliation backlog
+                    can cause the sender's retransmission timer to expire, adding duplicate LSP traffic and
+                    extending convergence. A PSNP can use any space remaining after the acknowledgments for
+                    reconciliation entries.
+                </t>
             </section>
 
         </section>
