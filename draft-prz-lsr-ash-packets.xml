@@ -988,7 +988,8 @@ Hash $6EB348F808C9AE4E
                 A receiver encountering overlapping ranges <bcp14>MUST</bcp14> treat the union of those
                 ranges as a single range with a zero hash. Any range exceeding the CASH header bounds
                 <bcp14>MUST</bcp14> be clamped to fit within the CASH range and treated as a zero hash.
-                Any range whose end is equal to or smaller than its start <bcp14>MUST</bcp14> be discarded.
+                A range whose end equals its start is valid and covers the fragments of that single system ID.
+                Any range whose end is smaller than its start <bcp14>MUST</bcp14> be discarded.
                 A node <bcp14>SHOULD</bcp14> log such events since they most likely indicate
                 protocol implementation problems or attacks.
             </t>
@@ -1066,7 +1067,8 @@ Hash $6EB348F808C9AE4E
 
             <t>PASHes are equivalent to PSNPs in that entries are treated independently:
                 gaps between entries have no semantics, entries need not be sorted, and may overlap.
-                Any range whose end is equal to or smaller than its start <bcp14>MUST</bcp14> be discarded. A node <bcp14>SHOULD</bcp14> log such events since they most likely indicate
+                A range whose end equals its start is valid and covers the fragments of that single system ID.
+                Any range whose end is smaller than its start <bcp14>MUST</bcp14> be discarded. A node <bcp14>SHOULD</bcp14> log such events since they most likely indicate
                 protocol implementation problems or attacks.
             </t>
 
