@@ -1090,6 +1090,52 @@ Hash $6EB348F808C9AE4E
             </t>
         </section>
 
+        <section anchor="additional-tlvs">
+            <name>Additional TLVs in CASH and PASH PDUs</name>
+            <t>
+                A CASH replaces a CSNP and a PASH replaces a PSNP; neither may be less capable than the
+                PDU it replaces. Every TLV type that an implementation supports in CSNPs
+                <bcp14>MUST</bcp14> equally be supported in CASHes, and every TLV type it supports in
+                PSNPs <bcp14>MUST</bcp14> equally be supported in PASHes, with the same semantics, the
+                same configuration and the same receive processing. This includes, but is not limited to,
+                the Authentication TLV (<xref target="RFC5304"/>, <xref target="RFC5310"/>), the Checksum
+                TLV, the Instance Identifier TLV, and the Flooding Parameters TLV of
+                <xref target="RFC9681"/>. Deployments therefore do not have to give up any of these
+                features, and in particular do not have to disable SNP authentication, in order to use ASH.
+            </t>
+            <t>
+                Such TLVs <bcp14>MAY</bcp14> appear anywhere in the PDU, before, between or after the
+                Node Range Hash TLVs, exactly as they may in CSNPs/PSNPs. A receiver <bcp14>MUST</bcp14>
+                ignore their position when collecting Node Range Hash Entries.
+            </t>
+            <t>
+                Where a TLV is computed over the PDU, it is computed over the complete CASH or PASH PDU,
+                in the same order and with the same field treatment as for CSNPs/PSNPs. In particular
+                the authentication digest of <xref target="RFC5304"/> and <xref target="RFC5310"/> covers
+                the whole PDU including all Node Range Hash TLVs, and is computed with the PDU Length
+                field already carrying the final length. The authentication configuration (keys, key
+                chains, algorithms and any per PDU type exemptions) that applies to CSNPs
+                <bcp14>MUST</bcp14> apply to CASHes, and the one that applies to PSNPs
+                <bcp14>MUST</bcp14> apply to PASHes.
+            </t>
+            <t>
+                A receiver <bcp14>MUST</bcp14> perform the same validation of these TLVs that it
+                performs for a CSNP (for a CASH) or a PSNP (for a PASH), and <bcp14>MUST</bcp14> do so
+                before any Node Range Hash Entry is compared, used to train compression statistics, or
+                triggers any PASH, PSNP or flooding. A PDU failing that validation <bcp14>MUST</bcp14>
+                be discarded exactly as a CSNP/PSNP failing it would be.
+            </t>
+            <t>
+                The space these TLVs need <bcp14>MUST</bcp14> be reserved when computing how many Node
+                Range Hash TLVs and entries fit within the MTU (<xref target="envelope"/>,
+                <xref target="max-coverage"/>), so that adding them never requires dropping or
+                re-splitting entries. If the space needed on a circuit exceeds what the implementation
+                has reserved, it <bcp14>MUST NOT</bcp14> send CASHes or PASHes without those TLVs on
+                that circuit; it <bcp14>MUST</bcp14> instead fall back to CSNPs/PSNPs there until
+                sufficient space is reserved.
+            </t>
+        </section>
+
         <section>
             <name>CASH Example</name>
 
@@ -1629,6 +1675,16 @@ Hash $6EB348F808C9AE4E
             <name>Security Considerations</name>
 
             <t>ASH security relies on the same mechanisms protecting IS-IS PDU integrity.
+                As required in <xref target="additional-tlvs"/>, CASHes and PASHes are authenticated
+                with the same mechanisms (<xref target="RFC5304"/>, <xref target="RFC5310"/>) and
+                configuration as the CSNPs and PSNPs they replace, so enabling ASH neither weakens nor
+                removes SNP authentication.
+            </t>
+            <t>
+                A received hash drives more work than a received CSNP entry: a mismatch triggers
+                further PASHes, PSNPs and flooding, and the verdict trains the per peer compression
+                statistics. Validating authentication before any of this happens is therefore required,
+                so that an unauthenticated PDU can neither trigger that work nor skew the statistics.
             </t>
 
         </section> <!-- end of security considerations -->
@@ -1745,6 +1801,32 @@ Hash $6EB348F808C9AE4E
                 <seriesInfo name="BCP" value="14"/>
                 <seriesInfo name="RFC" value="8174"/>
                 <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+            </reference>
+
+            <reference anchor="RFC5304">
+                <front>
+                    <title>IS-IS Cryptographic Authentication</title>
+                    <author initials="T." surname="Li" fullname="T. Li"/>
+                    <author initials="R." surname="Atkinson" fullname="R. Atkinson"/>
+                    <date month="October" year="2008"/>
+                </front>
+                <seriesInfo name="RFC" value="5304"/>
+                <seriesInfo name="DOI" value="10.17487/RFC5304"/>
+            </reference>
+
+            <reference anchor="RFC5310">
+                <front>
+                    <title>IS-IS Generic Cryptographic Authentication</title>
+                    <author initials="M." surname="Bhatia" fullname="M. Bhatia"/>
+                    <author initials="V." surname="Manral" fullname="V. Manral"/>
+                    <author initials="T." surname="Li" fullname="T. Li"/>
+                    <author initials="R." surname="Atkinson" fullname="R. Atkinson"/>
+                    <author initials="R." surname="White" fullname="R. White"/>
+                    <author initials="M." surname="Fanto" fullname="M. Fanto"/>
+                    <date month="February" year="2009"/>
+                </front>
+                <seriesInfo name="RFC" value="5310"/>
+                <seriesInfo name="DOI" value="10.17487/RFC5310"/>
             </reference>
 
         </references> <!-- end of normative references -->
