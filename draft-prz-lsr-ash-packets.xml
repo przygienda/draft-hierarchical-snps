@@ -805,6 +805,13 @@ Hash $6EB348F808C9AE4E
                 handled through normal IS-IS flooding procedures independently of ASH.
             </t>
             <t>
+                The set of fragments covered by the ASHes sent on a circuit <bcp14>MUST</bcp14> be
+                the same set that a CSNP sent on that circuit would describe.  An implementation that
+                restricts per circuit which LSPs it floods and advertises in CSNPs (e.g., by area
+                address) <bcp14>MUST</bcp14> either compute the ASHes over that restricted set or
+                <bcp14>MUST NOT</bcp14> send ASHes on that circuit.
+            </t>
+            <t>
                 When a node receives an ASH where any of the contained hashes
                 does not match after recomputation or comparison, it <bcp14>MUST</bcp14>
                  send PASHes with Merkle hashes covering the mismatched ranges. These new hashes <bcp14>MUST</bcp14> be
