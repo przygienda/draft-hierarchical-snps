@@ -812,6 +812,19 @@ Hash $6EB348F808C9AE4E
                     PASHes that would generate the same SNP requests or flooding
                     <bcp14>MAY</bcp14> be reconciled by the DIS before it reacts.
                 </t>
+                <t>
+                    When refinement on a broadcast circuit reaches a range that is no
+                    longer covered by ASH compression, a system participating in the
+                    refinement and holding non-purged LSP fragments in that range
+                    <bcp14>MUST</bcp14> advertise those fragments using normal IS-IS
+                    flooding. It <bcp14>MUST NOT</bcp14> rely solely on a PSNP exchange
+                    to initiate the repair. PSNP processing on a broadcast circuit is
+                    asymmetric: non-DIS systems send PSNPs to the DIS, while the DIS
+                    does not send PSNP requests. Flooding the locally held fragments
+                    therefore ensures that repair proceeds regardless of whether the
+                    fragment absent from one database is held by the DIS or by a
+                    non-DIS system.
+                </t>
             </section>
 
             <section anchor="rules">
