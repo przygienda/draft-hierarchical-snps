@@ -795,54 +795,22 @@ Hash $6EB348F808C9AE4E
             <section anchor="broadcast-circuits">
             <name>Broadcast Circuit Operation</name>
                 <t>
-                    On a broadcast circuit, ASH follows the database synchronization roles of
-                    CSNPs and PSNPs. Only the Designated Intermediate System (DIS) for a level
-                    <bcp14>MAY</bcp14> originate periodic CASHes for that level. The DIS
+                    On a broadcast circuit, only the Designated Intermediate System (DIS) for a
+                    level <bcp14>MAY</bcp14> originate periodic CASHes for that level. The DIS
                     <bcp14>MUST NOT</bcp14> replace a CSNP with a CASH unless every Up
                     adjacency at that level has advertised
                     <spanx style="strong">ASH_RX</spanx>. Otherwise it
                     <bcp14>MUST</bcp14> send an ordinary CSNP.
                 </t>
                 <t>
-                    ASH refinement on a broadcast circuit forms a hub-and-spoke exchange through
-                    the DIS. The DIS processes PASHes received from Up adjacencies at the
-                    corresponding level. A non-DIS processes CASHes and PASHes originated by the
-                    current DIS, but <bcp14>MUST NOT</bcp14> react to a PASH originated by
-                    another non-DIS. In particular, such a PASH
-                    <bcp14>MUST NOT</bcp14> cause another PASH, an SNP request, flooding, or
-                    acknowledgement of queued flooding by that non-DIS.
+                    PASH refinement on a broadcast circuit is performed between the DIS and the
+                    non-DIS systems. The DIS processes PASHes originated by non-DIS systems. A
+                    non-DIS processes PASHes originated by the current DIS, but
+                    <bcp14>MUST NOT</bcp14> process a PASH originated by another non-DIS.
                 </t>
                 <t>
-                    This restriction avoids multiplying one mismatch into identical refinement
-                    and flooding work at every system on the LAN. It does not prevent
-                    convergence: a periodic CASH describes the DIS database over the complete
-                    node-ID space, every non-DIS compares that description with its own
-                    database, and terminal SNP or flooding repair is itself transmitted on the
-                    broadcast circuit. Consequently, convergence of every non-DIS with the DIS
-                    implies convergence of the LAN.
-                </t>
-                <t>
-                    A PASH has no destination or exchange identifier. On a broadcast circuit it
-                    is therefore a multicast assertion of the originator's current hashes, not
-                    a private response that other receivers can correlate with a particular
-                    request. Implementations <bcp14>SHOULD</bcp14> merge redundant pending
-                    refinement work. In particular, when differently bounded or overlapping
-                    PASH ranges reach the same terminal system ID, an implementation
-                    <bcp14>SHOULD</bcp14> schedule SNP or flooding resolution for that system
-                    ID only once. A short randomized hold-down before terminal resolution
-                    <bcp14>MAY</bcp14> be used on broadcast circuits to collect such duplicate
-                    work. This hold-down does not apply to point-to-point circuits, where
-                    terminal resolution ought to proceed immediately.
-                </t>
-                <t>
-                    Before applying the broadcast roles above, a receiver
-                    <bcp14>MUST</bcp14> associate the packet with an Up adjacency at the
-                    indicated level and <bcp14>MUST</bcp14> verify that the Source ID in the
-                    ASH packet identifies that adjacency. A change of DIS
-                    <bcp14>MUST</bcp14> invalidate pending ASH refinement and any state by
-                    which a previously transmitted CASH suppresses a CSNP. During the transition
-                    an implementation <bcp14>SHOULD</bcp14> use ordinary CSNPs until the DIS
-                    relationship and ASH capabilities are stable.
+                    PASHes that would generate the same SNP requests or flooding
+                    <bcp14>MAY</bcp14> be reconciled by the DIS before it reacts.
                 </t>
             </section>
 
