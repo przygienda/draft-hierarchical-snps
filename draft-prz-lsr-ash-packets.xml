@@ -825,6 +825,16 @@ Hash $6EB348F808C9AE4E
                     fragment absent from one database is held by the DIS or by a
                     non-DIS system.
                 </t>
+                <t>
+                    A non-DIS that receives a zero-hash PASH directive from the DIS
+                    <bcp14>MUST</bcp14> report the same valid range to the DIS in a
+                    zero-hash PASH entry after scheduling any locally held fragments
+                    for normal flooding. This is a role-directed terminal response,
+                    not another hash comparison or subdivision step. The DIS
+                    <bcp14>MUST NOT</bcp14> return a zero-hash directive received
+                    from a non-DIS. Together with the PASH source rules above, this
+                    prevents directive loops.
+                </t>
             </section>
 
             <section anchor="rules">
@@ -860,17 +870,30 @@ Hash $6EB348F808C9AE4E
                 small number of LSPs.
 
                 </t>
-            <t>In case the mismatched hash has no matching fragments in the local
-                database, the node <bcp14>MUST</bcp14> fall back to CSNPs or CASHes, or send a PASH with hash set to zero
-                to request the remote node to either refine the range or use normal IS-IS procedures
-                to synchronize the database.
-
-
-                    The semantics of a zero hash are consistent in this regard: zero indicates that a node is not present
-                    in the system or has no fragments, which for ASH purposes is a distinction without a
-                    difference. A zero hash consistently indicates that the range
-                    is not covered by ASH compression and <bcp14>MUST</bcp14> be resolved through SNP exchanges or flooding,
-                    regardless of whether fragments are actually present.
+            <t>
+                When refinement reaches a range that has no matching non-purged fragments in the local
+                database, silence is not sufficient: independently selected range boundaries can prevent
+                the remote node from reaching the same terminal range. The node <bcp14>MUST</bcp14>
+                therefore fall back to CSNP or CASH exchange, or send a PASH entry for the valid,
+                non-inverted range with its hash set to zero.
+            </t>
+            <t>
+                A zero hash in a PASH is a terminal repair directive, not a hash mismatch to refine
+                further. Range validity is checked before interpreting the hash: an entry whose Range End
+                is smaller than its Range Start <bcp14>MUST</bcp14> be discarded even when its hash is
+                zero. For a valid zero-hash entry, a receiver <bcp14>MUST NOT</bcp14> compare or subdivide
+                the range.
+                If it holds non-purged fragments in the indicated range, it <bcp14>MUST</bcp14>
+                advertise their normal LSP Entry information using SNP exchange or send them using normal
+                IS-IS flooding procedures. If it holds no such fragments, it performs no further action
+                for that directive, except for the role-directed broadcast response specified in
+                <xref target="broadcast-circuits"/>.
+            </t>
+            <t>
+                The value zero is reserved and <bcp14>MUST NOT</bcp14> be emitted as the result of any
+                fragment-hash or range-hash computation. In a valid Node Range Hash Entry, zero means only
+                that the indicated range is not covered by ASH compression and must be resolved through
+                SNP exchange or normal flooding. It does not make an otherwise malformed range valid.
             </t>
 
             <!--                <t>-->
@@ -1011,7 +1034,9 @@ Hash $6EB348F808C9AE4E
                 fragments of both the start and the end system ID are contained within the range.</t>
             <t>
                 The Merkle hash field is 8 octets containing the 64-bit computed hash of all fragments covered
-                by the range.
+                by the range. The computed value <bcp14>MUST NOT</bcp14> be zero. The value zero is reserved
+                to indicate that a valid range is not covered by ASH compression and must be resolved through
+                SNP exchange or normal flooding, as specified in <xref target="rules"/>.
             </t>
 
             <t>
@@ -1110,8 +1135,9 @@ Hash $6EB348F808C9AE4E
             <t>PASHes are equivalent to PSNPs in that entries are treated independently:
                 gaps between entries have no semantics, entries need not be sorted, and may overlap.
                 A range whose end equals its start is valid and covers the fragments of that single system ID.
-                Any range whose end is smaller than its start <bcp14>MUST</bcp14> be discarded. A node <bcp14>SHOULD</bcp14> log such events since they most likely indicate
-                protocol implementation problems or attacks.
+                Any range whose end is smaller than its start <bcp14>MUST</bcp14> be discarded before its
+                hash is interpreted, including when the hash is zero. A node <bcp14>SHOULD</bcp14> log such
+                events since they most likely indicate protocol implementation problems or attacks.
             </t>
 
             <t>
