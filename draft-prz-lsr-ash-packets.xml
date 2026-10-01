@@ -38,7 +38,7 @@
 <?rfc sortrefs="yes" ?>
 <?rfc compact="yes" ?>
 <?rfc subcompact="no" ?>
-<rfc category="exp" docName="draft-prz-lsr-ash-packets-05" ipr="trust200902">
+<rfc category="exp" docName="draft-prz-lsr-ash-packets-06" ipr="trust200902">
 
     <!-- ***** FRONT MATTER ***** -->
 
@@ -197,8 +197,9 @@
             <t> The exchange consists of initial CASH packets (analogous to CSNPs but carrying node range hashes)
                 followed by
                 PASH packets (analogous to PSNPs) that omit matching ranges and exchange hashes
-                over progressively smaller ranges. Once a hash covers a single node only, PSNPs or direct flooding
-                is used to synchronize the databases in the traditional IS-IS manner. ASH operates
+                over progressively smaller ranges. Once a range reaches an implementation's terminal
+                repair threshold, PSNPs or direct flooding are used to synchronize the databases in the
+                traditional IS-IS manner. A terminal range can cover one or more system IDs. ASH operates
                 at the resolution of a system ID (including its pseudonodes), not individual fragments.
             </t>
             <t>
@@ -577,8 +578,8 @@ Claude (Anthropic) assisted in reviewing the draft specification, identifying am
             </t>
 
             <t>
-                If a fragment hash computes to zero, the value <bcp14>MUST</bcp14> be replaced with
-                the constant 1.
+                If a fragment hash computes to zero or to the 64-bit all-ones value, the value
+                <bcp14>MUST</bcp14> be replaced with the constant 1.
             </t>
 
             <t>
@@ -649,8 +650,11 @@ Hash $6EB348F808C9AE4E
             -->
 
             <t>
-                If a node range hash computes to zero, the value <bcp14>MUST</bcp14> be replaced with
-                the constant 1; otherwise the range would assume the semantics of "no fragments present for those nodes".
+                For a non-empty range, if a node range hash computes to zero or to the 64-bit
+                all-ones value, the value <bcp14>MUST</bcp14> be replaced with the constant 1.
+                Zero is reserved for the terminal wire directive described in
+                <xref target="rules"/>. The all-ones value is reserved and
+                <bcp14>MUST NOT</bcp14> be transmitted.
             </t>
         </section>
     </section>
@@ -826,12 +830,13 @@ Hash $6EB348F808C9AE4E
                     non-DIS system.
                 </t>
                 <t>
-                    A non-DIS that receives a zero-hash PASH directive from the DIS
+                    A non-DIS that receives a terminal PASH directive from the DIS (encoded
+                    as a zero hash on the wire)
                     <bcp14>MUST</bcp14> report the same valid range to the DIS in a
                     zero-hash PASH entry after scheduling any locally held fragments
                     for normal flooding. This is a role-directed terminal response,
                     not another hash comparison or subdivision step. The DIS
-                    <bcp14>MUST NOT</bcp14> return a zero-hash directive received
+                    <bcp14>MUST NOT</bcp14> return a terminal directive received
                     from a non-DIS. Together with the PASH source rules above, this
                     prevents directive loops.
                 </t>
@@ -874,8 +879,7 @@ Hash $6EB348F808C9AE4E
                 When refinement reaches a range that has no matching non-purged fragments in the local
                 database, silence is not sufficient: independently selected range boundaries can prevent
                 the remote node from reaching the same terminal range. The node <bcp14>MUST</bcp14>
-                therefore fall back to CSNP or CASH exchange, or send a PASH entry for the valid,
-                non-inverted range with its hash set to zero.
+                therefore send a PASH entry for the valid, non-inverted range with its hash set to zero.
             </t>
             <t>
                 A zero hash in a PASH is a terminal repair directive, not a hash mismatch to refine
@@ -884,16 +888,22 @@ Hash $6EB348F808C9AE4E
                 zero. For a valid zero-hash entry, a receiver <bcp14>MUST NOT</bcp14> compare or subdivide
                 the range.
                 If it holds non-purged fragments in the indicated range, it <bcp14>MUST</bcp14>
-                advertise their normal LSP Entry information using SNP exchange or send them using normal
-                IS-IS flooding procedures. If it holds no such fragments, it performs no further action
+                send every such fragment using normal IS-IS flooding procedures. It
+                <bcp14>MUST NOT</bcp14> answer the directive only with a PSNP, because that would add a
+                redundant request/response round before the same fragments are flooded. If it holds no
+                such fragments, it performs no further action
                 for that directive, except for the role-directed broadcast response specified in
                 <xref target="broadcast-circuits"/>.
             </t>
             <t>
                 The value zero is reserved and <bcp14>MUST NOT</bcp14> be emitted as the result of any
-                fragment-hash or range-hash computation. In a valid Node Range Hash Entry, zero means only
-                that the indicated range is not covered by ASH compression and must be resolved through
-                SNP exchange or normal flooding. It does not make an otherwise malformed range valid.
+                fragment-hash computation or any non-empty range-hash computation. In a valid Node Range
+                Hash Entry, zero means only that the sender has no locally held non-purged fragments in
+                the terminal range and requests direct flooding by the receiver. It does not make an
+                otherwise malformed range valid.
+            </t>
+            <t>
+                The all-ones value is reserved and <bcp14>MUST NOT</bcp14> be transmitted.
             </t>
 
             <!--                <t>-->
@@ -910,15 +920,13 @@ Hash $6EB348F808C9AE4E
             <!--                    covers relatively few LSPs. </t>-->
 
             <t>
-                If there is a mismatch - or no computation available - for a hash covering just a single system ID (including
-                its pseudonodes), then SNPs for all fragments of that
-                node and its pseudonodes <bcp14>MUST</bcp14>
-                be sent, or the fragments flooded directly.
-                Since this behavior is initiated from both sides of the adjacency, both nodes
-                will ultimately end up with a full set of fragments belonging to the node described by the hash, even
-                when using PSNPs.
-                Other techniques <bcp14>MAY</bcp14> also be used, such as sending a CSNP covering the range from the smallest
-                possible fragment of the system ID to the largest possible fragment.
+                An implementation <bcp14>MAY</bcp14> stop refinement when a mismatching range
+                contains sufficiently few locally held fragments, even when the range covers more than
+                one system ID. If it holds fragments in that terminal range, it
+                <bcp14>MUST</bcp14> either advertise all of them in SNPs or flood them directly. If it
+                holds none, it <bcp14>MUST</bcp14> send the zero-hash directive specified above.
+                Other techniques <bcp14>MAY</bcp14> also be used, such as sending a CSNP covering the
+                terminal range.
 
                 <!--                        In case of mismatch or no computation available for a hash covering only a single node-->
                 <!--                        (with its pnodes) or mismatch on a hash covering less than a CSNP PDU full of fragments,-->
@@ -1034,9 +1042,9 @@ Hash $6EB348F808C9AE4E
                 fragments of both the start and the end system ID are contained within the range.</t>
             <t>
                 The Merkle hash field is 8 octets containing the 64-bit computed hash of all fragments covered
-                by the range. The computed value <bcp14>MUST NOT</bcp14> be zero. The value zero is reserved
-                to indicate that a valid range is not covered by ASH compression and must be resolved through
-                SNP exchange or normal flooding, as specified in <xref target="rules"/>.
+                by the range. A computed value <bcp14>MUST NOT</bcp14> be zero. Zero is the terminal
+                direct-flood directive specified in <xref target="rules"/>. The all-ones value is reserved
+                and <bcp14>MUST NOT</bcp14> be transmitted.
             </t>
 
             <t>
@@ -1182,8 +1190,7 @@ Hash $6EB348F808C9AE4E
             <t>
                 A receiver <bcp14>MUST</bcp14> perform the same validation of these TLVs that it
                 performs for a CSNP (for a CASH) or a PSNP (for a PASH), and <bcp14>MUST</bcp14> do so
-                before any Node Range Hash Entry is compared, used to train compression statistics, or
-                triggers any PASH, PSNP or flooding. A PDU failing that validation <bcp14>MUST</bcp14>
+                before any Node Range Hash Entry is compared or triggers any PASH, PSNP or flooding. A PDU failing that validation <bcp14>MUST</bcp14>
                 be discarded exactly as a CSNP/PSNP failing it would be.
             </t>
             <t>
@@ -1743,9 +1750,8 @@ Hash $6EB348F808C9AE4E
             </t>
             <t>
                 A received hash drives more work than a received CSNP entry: a mismatch triggers
-                further PASHes, PSNPs and flooding, and the verdict trains the per peer compression
-                statistics. Validating authentication before any of this happens is therefore required,
-                so that an unauthenticated PDU can neither trigger that work nor skew the statistics.
+                further PASHes, PSNPs and flooding. Validating authentication before any of this happens
+                is therefore required, so that an unauthenticated PDU cannot trigger that work.
             </t>
 
         </section> <!-- end of security considerations -->
@@ -1990,17 +1996,15 @@ Hash $6EB348F808C9AE4E
 pub fn fragment_hash(
     fragmentid: &SharedFragmentID,
     fragmentcontent: &FragmentContent,
-    variant: Option<ASHFragmentHashVariant>,
-    size: Option<ASHSize>,
 ) -> ASHHash {
     let nid = fragmentid.node.node_id().0;
     let pnodebe = fragmentid.pnode.0.to_be_bytes();
     let seqnrbe = fragmentcontent.seqnr.0.to_be_bytes();
     let fragmentnrbe = fragmentid.fragmentnr.0.to_be_bytes();
-    let csumbe = fragmentcontent.IS-IS_checksum.0.to_be_bytes();
-    let lenbe = fragmentcontent.IS-IS_pdu_length.0.to_be_bytes();
+    let csumbe = fragmentcontent.isis_checksum.0.to_be_bytes();
+    let lenbe = fragmentcontent.isis_pdu_length.0.to_be_bytes();
 
-    let mut rotate_in_primary = nid.iter().chain(
+    let rotate_in_primary = nid.iter().chain(
         csumbe.iter().chain(
             seqnrbe.iter().chain(
                 fragmentnrbe
@@ -2010,32 +2014,21 @@ pub fn fragment_hash(
         ),
     );
 
-    let size = size.unwrap_or(ASHSize::LIBRARY_ASH_SIZE);
-    let variant = variant.unwrap_or(ASHFragmentHashVariant::LIBRARY_ASH_FRAGMENT_HASH);
+    let key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16u8];
+    let mut hasher = SipHasher13::new_with_key(&key);
+    let mut sl = [0u8; 16];
+    rotate_in_primary
+        .copied()
+        .collect_slice_checked(&mut sl[..]);
+    hasher.write(&sl);
+    let hash = ASHHash(hasher.finish());
 
-    match variant {
-        ASHFragmentHashVariant::Siphash => {
-
-            let key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16u8];
-            let mut hasher = SipHasher13::new_with_key(&key);
-            let mut sl = [0u8; 16];
-            rotate_in_primary
-                .map(|v| *v)
-                .collect_slice_checked(&mut sl[..]);
-            hasher.write(&sl);
-            let r = match hasher.finish() {
-                v if v == 0 => 1,
-                v if v != 0 => v,
-                _ => unreachable!(),
-            };
-            match size {
-                ASHSize::_64Bits => {
-                    r.into()
-                },
-                ASHSize::_48Bits => {
-                    let hin = r ^ (r >> 48);
-                    (hin & 0xffff_ffff_ffff).into()
-                }
+    if hash == EMPTY_ASHHASH || hash == ASHHash(u64::MAX) {
+        ASHHash(1)
+    } else {
+        hash
+    }
+}
 <CODE ENDS>
 ]]></artwork>
             </figure>
