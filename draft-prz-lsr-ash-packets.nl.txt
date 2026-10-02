@@ -1,0 +1,1736 @@
+     1	
+     2	
+     3	
+     4	
+     5	Network Working Group                                      T. Przygienda
+     6	Internet-Draft                                                     T. Li
+     7	Intended status: Experimental                                 J. Halpern
+     8	Expires: 5 April 2027                             HPE Juniper Networking
+     9	                                                          2 October 2026
+    10	
+    11	
+    12	                   IS-IS Aggregated SNP Hash Packets
+    13	                      draft-prz-lsr-ash-packets-06
+    14	
+    15	Abstract
+    16	
+    17	   The document presents an optional new type of database
+    18	   synchronization packet called an Aggregated SNP Hash (ASH).  When
+    19	   feasible, it compresses traditional SNP exchanges into a dynamic
+    20	   Merkle tree-like structure, which speeds up synchronization of large
+    21	   databases and adjacency numbers while reducing the load from regular
+    22	   CSNP exchanges during normal operation.  Just like CSNPs and PSNPs,
+    23	   ASH packets come in two flavors, called Complete ASH (CASH) and
+    24	   Partial ASH (PASH).
+    25	
+    26	Status of This Memo
+    27	
+    28	   This Internet-Draft is submitted in full conformance with the
+    29	   provisions of BCP 78 and BCP 79.
+    30	
+    31	   Internet-Drafts are working documents of the Internet Engineering
+    32	   Task Force (IETF).  Note that other groups may also distribute
+    33	   working documents as Internet-Drafts.  The list of current Internet-
+    34	   Drafts is at https://datatracker.ietf.org/drafts/current/.
+    35	
+    36	   Internet-Drafts are draft documents valid for a maximum of six months
+    37	   and may be updated, replaced, or obsoleted by other documents at any
+    38	   time.  It is inappropriate to use Internet-Drafts as reference
+    39	   material or to cite them other than as "work in progress."
+    40	
+    41	   This Internet-Draft will expire on 5 April 2027.
+    42	
+    43	Copyright Notice
+    44	
+    45	   Copyright (c) 2026 IETF Trust and the persons identified as the
+    46	   document authors.  All rights reserved.
+    47	
+    48	   This document is subject to BCP 78 and the IETF Trust's Legal
+    49	   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+    50	   license-info) in effect on the date of publication of this document.
+    51	   Please review these documents carefully, as they describe your rights
+    52	   and restrictions with respect to this document.  Code Components
+    53	
+    54	
+    55	
+    56	Przygienda, et al.        Expires 5 April 2027                  [Page 1]
+    57	
+    58	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+    59	
+    60	
+    61	   extracted from this document must include Revised BSD License text as
+    62	   described in Section 4.e of the Trust Legal Provisions and are
+    63	   provided without warranty as described in the Revised BSD License.
+    64	
+    65	Table of Contents
+    66	
+    67	   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
+    68	   2.  Example . . . . . . . . . . . . . . . . . . . . . . . . . . .   4
+    69	   3.  Node Ranges . . . . . . . . . . . . . . . . . . . . . . . . .   7
+    70	   4.  Hash Functions  . . . . . . . . . . . . . . . . . . . . . . .   8
+    71	     4.1.  Hash Function for a Fragment  . . . . . . . . . . . . . .   8
+    72	     4.2.  Fast, Incremental, Self-Inverse Hashing Function for
+    73	           Ranges  . . . . . . . . . . . . . . . . . . . . . . . . .   8
+    74	   5.  Procedures  . . . . . . . . . . . . . . . . . . . . . . . . .   9
+    75	     5.1.  ASH Support Negotiation . . . . . . . . . . . . . . . . .   9
+    76	     5.2.  Advertising and Receiving CASHes  . . . . . . . . . . . .  10
+    77	     5.3.  Advertising and Receiving PASHes  . . . . . . . . . . . .  10
+    78	     5.4.  Broadcast Circuit Operation . . . . . . . . . . . . . . .  11
+    79	     5.5.  Refinement Rules  . . . . . . . . . . . . . . . . . . . .  11
+    80	       5.5.1.  Terminal Range Repair on Point-to-Point Circuits  . .  13
+    81	   6.  CASH PDU Format . . . . . . . . . . . . . . . . . . . . . . .  14
+    82	   7.  PASH PDU Format . . . . . . . . . . . . . . . . . . . . . . .  17
+    83	   8.  Additional TLVs in CASH and PASH PDUs . . . . . . . . . . . .  19
+    84	   9.  CASH Example  . . . . . . . . . . . . . . . . . . . . . . . .  20
+    85	   10. Further Considerations  . . . . . . . . . . . . . . . . . . .  21
+    86	     10.1.  IS-IS Scale Envelope . . . . . . . . . . . . . . . . . .  21
+    87	     10.2.  Maximum Advisable Hash Coverage  . . . . . . . . . . . .  22
+    88	     10.3.  Hash Collision Probabilities . . . . . . . . . . . . . .  23
+    89	     10.4.  Impact of Packet Losses  . . . . . . . . . . . . . . . .  24
+    90	     10.5.  Decompression and Caching/Comparison Optimizations . . .  25
+    91	     10.6.  Reconciliation Pacing and Amplification Avoidance  . . .  25
+    92	   11. Security Considerations . . . . . . . . . . . . . . . . . . .  26
+    93	   12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  27
+    94	   13. Contributors  . . . . . . . . . . . . . . . . . . . . . . . .  27
+    95	   14. Acknowledgement . . . . . . . . . . . . . . . . . . . . . . .  28
+    96	   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  28
+    97	     15.1.  Normative References . . . . . . . . . . . . . . . . . .  28
+    98	     15.2.  Informative References . . . . . . . . . . . . . . . . .  28
+    99	   Appendix A.  Reference Implementation of SIP Fragment Hashing . .  29
+   100	   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  30
+   101	
+   102	
+   103	
+   104	
+   105	
+   106	
+   107	
+   108	
+   109	
+   110	
+   111	
+   112	Przygienda, et al.        Expires 5 April 2027                  [Page 2]
+   113	
+   114	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   115	
+   116	
+   117	1.  Introduction
+   118	
+   119	   The document introduces an optional new type of database
+   120	   synchronization packet called the Aggregated SNP Hash (ASH).  It
+   121	   compresses and enhances traditional CSNP and SNP exchanges with a
+   122	   structure somewhat similar to a dynamic Merkle tree [MERKLE],
+   123	   enabling faster synchronization of large databases and adjacency
+   124	   information while reducing the overhead of regular CSNP exchanges
+   125	   during steady state operation.  By combining parallel flooding, SNP
+   126	   and ASH exchanges, database resynchronization can be accelerated
+   127	   because fewer packets (and not the entire CSNP set) are used to fix
+   128	   inconsistencies.  Using ASHs also reduces unnecessary flooding and
+   129	   communication overhead, while still detecting mismatched fragments
+   130	   more efficiently than full CSNP exchanges.
+   131	
+   132	   To maintain the Merkle analogy, we initially treat each SNP entry for
+   133	   an LSP as equivalent to an "as good as perfect" - though rather long
+   134	   - Merkle hash.  In other words, the LSP ID, sequence number, and
+   135	   checksum act as a "collision-free fragment hash".  We include the
+   136	   fragment's PDU length in this perfect hash to add more entropy in the
+   137	   next step.  Lifetime is not used since it is not compared except in
+   138	   purge cases.  The SNP entries then serve as the conceptual "bottom"
+   139	   of the Merkle tree.
+   140	
+   141	   In the following step we compute a [SIPHASH] over the SNP entry data
+   142	   to create a shorter Merkle hash for each fragment.  Somewhat
+   143	   surprisingly, these per-fragment hashes are never transmitted in
+   144	   packets, since doing so would effectively duplicate SNP
+   145	   functionality.  However, the hash that aggregates all fragment hashes
+   146	   of a node becomes a "node Merkle hash".  Groups of node hashes can
+   147	   then be summarized into a "node range Merkle hash" by combining the
+   148	   individual node hashes together.  For the node and node range hashes,
+   149	   we switch from [SIPHASH] to a different hashing method, as explained
+   150	   in Section 4.2.
+   151	
+   152	   The resulting hierarchy of hashes enables large LSDB synchronizations
+   153	   using far fewer packets than CSNPs alone.  Although the hashes
+   154	   summarize ranges recursively, the actual exchange resembles a [SKIP]-
+   155	   like process rather than maintaining a fixed tree structure, since
+   156	   the packets and ranges exchanged vary depending on where mismatches
+   157	   are found.
+   158	
+   159	   This document limits itself to LSDB sizes on the order of 1E6
+   160	   fragments and addresses considerations necessary to prevent overly
+   161	   garrulous exchanges of hashes covering progressively smaller sets of
+   162	   fragments.  More details on the targeted IS-IS scale envelope can be
+   163	   found in Section 10.1, and further considerations are summarized in
+   164	   Section 10.
+   165	
+   166	
+   167	
+   168	Przygienda, et al.        Expires 5 April 2027                  [Page 3]
+   169	
+   170	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   171	
+   172	
+   173	   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   174	   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   175	   "OPTIONAL" in this document are to be interpreted as described in
+   176	   BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   177	   capitals, as shown here.
+   178	
+   179	2.  Example
+   180	
+   181	   Before diving into precise technical details, an example will help
+   182	   introduce the concepts involved and demonstrate the behavior of an
+   183	   exchange.
+   184	
+   185	   The exchange consists of initial CASH packets (analogous to CSNPs but
+   186	   carrying node range hashes) followed by PASH packets (analogous to
+   187	   PSNPs) that omit matching ranges and exchange hashes over
+   188	   progressively smaller ranges.  Once a range reaches an
+   189	   implementation's terminal repair threshold, a CSNP scoped to that
+   190	   range (or, when the node holds nothing in the range, a zero-hash PASH
+   191	   directive) synchronizes the databases in the traditional IS-IS
+   192	   manner, see Section 5.5.1.  A terminal range can cover one or more
+   193	   system IDs.  ASH operates at the resolution of a system ID (including
+   194	   its pseudonodes), not individual fragments.
+   195	
+   196	   The details of packet formats are provided later in Section 7 and
+   197	   Section 6, and the procedures are defined in Section 5.5, but the
+   198	   example can be understood intuitively without those details.  For the
+   199	   sake of readability the example encompasses only a database of
+   200	   roughly 3000 fragments over 100 nodes with about 10% of the database
+   201	   not synchronized on start.  Details of PSNP packets exchanged are
+   202	   omitted for the same reason.  Note that the fragment counts shown in
+   203	   the examples are informational annotations only and are not carried
+   204	   in the wire format of ASH entries.
+   205	
+   206	   Initially, both nodes generate and exchange a CASH packet.  Node 1
+   207	   sends to Node 2 the CASH shown in Figure 1, containing node range
+   208	   hashes, some of which will disagree with the peer.
+   209	
+   210	
+   211	
+   212	
+   213	
+   214	
+   215	
+   216	
+   217	
+   218	
+   219	
+   220	
+   221	
+   222	
+   223	
+   224	Przygienda, et al.        Expires 5 April 2027                  [Page 4]
+   225	
+   226	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   227	
+   228	
+   229	Node1->Node2 (initial CASH) -> 1 CASH packet(s)
+   230	Pkt   1 [1010.0000.00.00 - 1010.0063.00.00] (  35 hashes):
+   231	1010.0000.00.00 - 1010.0001.FF.FF:   47 frags, hash=$ED6174261B52A218
+   232	1010.0002.00.00 - 1010.0002.FF.FF:  150 frags, hash=$BA8EC0FA6F86557A
+   233	1010.0003.00.00 - 1010.0006.FF.FF:   87 frags, hash=$2A7D5B4045D54F14
+   234	1010.0007.00.00 - 1010.0008.FF.FF:   34 frags, hash=$B15068FC7C4F044B
+   235	1010.0009.00.00 - 1010.000A.FF.FF:   85 frags, hash=$4396112BEAB62D20
+   236	1010.000B.00.00 - 1010.000E.FF.FF:   88 frags, hash=$CCA15999A8BAA5E8  PEER MISMATCH
+   237	1010.000F.00.00 - 1010.0014.FF.FF:   91 frags, hash=$04CA3A21161464F9  PEER MISMATCH
+   238	1010.0015.00.00 - 1010.0017.FF.FF:   79 frags, hash=$82039367F94F611C  PEER MISMATCH
+   239	1010.0018.00.00 - 1010.001A.FF.FF:   61 frags, hash=$65D4C194A433D2A7
+   240	1010.001B.00.00 - 1010.001C.FF.FF:   92 frags, hash=$5F8701B08AE39C2C
+   241	1010.001D.00.00 - 1010.001F.FF.FF:   75 frags, hash=$0123DD370E42720C  PEER MISMATCH
+   242	1010.0020.00.00 - 1010.0021.FF.FF:   39 frags, hash=$9CFF63C97F8C86D0
+   243	1010.0022.00.00 - 1010.0022.FF.FF:  155 frags, hash=$D1513B30C1F1D21D
+   244	1010.0023.00.00 - 1010.0026.FF.FF:   91 frags, hash=$51B443F4FE1B20DA  PEER MISMATCH
+   245	1010.0027.00.00 - 1010.0029.FF.FF:   83 frags, hash=$44CEC7E1452B1855
+   246	1010.002A.00.00 - 1010.002E.FF.FF:   86 frags, hash=$8F1B907E974094F3
+   247	1010.002F.00.00 - 1010.0032.FF.FF:   89 frags, hash=$E2A31EC91DB1C4C3  PEER MISMATCH
+   248	1010.0033.00.00 - 1010.0036.FF.FF:   85 frags, hash=$E4D0AF41BA0BBDF1  PEER MISMATCH
+   249	1010.0037.00.00 - 1010.003B.FF.FF:   82 frags, hash=$13A40B0A950D7694
+   250	1010.003C.00.00 - 1010.003C.FF.FF:   23 frags, hash=$DA7335371FB231CD
+   251	1010.003D.00.00 - 1010.003D.FF.FF:   99 frags, hash=$D14266119B1003CD
+   252	1010.003E.00.00 - 1010.003E.FF.FF:   34 frags, hash=$91D8522BD2EB0523
+   253	1010.003F.00.00 - 1010.003F.FF.FF:   91 frags, hash=$9F206FAF8432046E
+   254	1010.0040.00.00 - 1010.0040.FF.FF:   88 frags, hash=$79441DDEE60A1F89
+   255	1010.0041.00.00 - 1010.0044.FF.FF:   87 frags, hash=$ED7F3899858D61EE
+   256	1010.0045.00.00 - 1010.0046.FF.FF:   22 frags, hash=$382CF99A031E42DE
+   257	1010.0047.00.00 - 1010.0047.FF.FF:  101 frags, hash=$10B9E7D282B7B8EF
+   258	1010.0048.00.00 - 1010.004B.FF.FF:   83 frags, hash=$AC0C721830474E1C
+   259	1010.004C.00.00 - 1010.004D.FF.FF:   25 frags, hash=$501B59AE9A65ABC9  PEER MISMATCH
+   260	1010.004E.00.00 - 1010.004E.FF.FF:  166 frags, hash=$4EF46668F1DD1A7B
+   261	1010.004F.00.00 - 1010.0054.FF.FF:   90 frags, hash=$64362751D60995DA
+   262	1010.0055.00.00 - 1010.0059.FF.FF:   87 frags, hash=$2771634B6A78AACE
+   263	1010.005A.00.00 - 1010.005C.FF.FF:   91 frags, hash=$E3F65D19CC13C7ED
+   264	1010.005D.00.00 - 1010.0060.FF.FF:   84 frags, hash=$C3205BB177BB816E
+   265	1010.0061.00.00 - 1010.0063.00.00:   52 frags, hash=$D3500D0875EC4B66
+   266	
+   267	                               Figure 1
+   268	
+   269	   Analogously, Node 2 sends an initial CASH with 33 hashes as shown in
+   270	   Figure 2.  It may seem counter-intuitive that the ranges do not
+   271	   align, but this is natural since the databases themselves differ.
+   272	   Section 3 addresses this effect in more detail.
+   273	
+   274	
+   275	
+   276	
+   277	
+   278	
+   279	
+   280	Przygienda, et al.        Expires 5 April 2027                  [Page 5]
+   281	
+   282	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   283	
+   284	
+   285	Node2->Node1 (initial CASH) -> 1 CASH packet(s)
+   286	Pkt   1 [1010.0000.00.00 - 1010.0063.00.00] (  33 hashes):
+   287	1010.0000.00.00 - 1010.0001.FF.FF:   47 frags, hash=$ED6174261B52A218
+   288	1010.0002.00.00 - 1010.0002.FF.FF:  150 frags, hash=$B312CA61CDDAF08F
+   289	1010.0003.00.00 - 1010.0006.FF.FF:   87 frags, hash=$2A7D5B4045D54F14
+   290	1010.0007.00.00 - 1010.0008.FF.FF:   34 frags, hash=$B15068FC7C4F044B
+   291	1010.0009.00.00 - 1010.000A.FF.FF:   85 frags, hash=$134574F1DF91FBE5
+   292	1010.000B.00.00 - 1010.000E.FF.FF:   88 frags, hash=$41DA43916CC90C52  PEER MISMATCH
+   293	1010.000F.00.00 - 1010.0014.FF.FF:   91 frags, hash=$866969306096FD29  PEER MISMATCH
+   294	1010.0015.00.00 - 1010.0017.FF.FF:   79 frags, hash=$C2CEDFBA88080A3B  PEER MISMATCH
+   295	1010.0018.00.00 - 1010.001A.FF.FF:   61 frags, hash=$65D4C194A433D2A7
+   296	1010.001B.00.00 - 1010.001C.FF.FF:   92 frags, hash=$0BA9276510EE03CB
+   297	1010.001D.00.00 - 1010.0021.FF.FF:   92 frags, hash=$4F5A632B673697BA  PEER MISMATCH
+   298	1010.0022.00.00 - 1010.0022.FF.FF:  155 frags, hash=$6EDDFD41D8C4E0A6
+   299	1010.0023.00.00 - 1010.0026.FF.FF:   91 frags, hash=$2C2B89EF96A7C7C8  PEER MISMATCH
+   300	1010.0027.00.00 - 1010.0029.FF.FF:   83 frags, hash=$878C86D658B81FAD
+   301	1010.002A.00.00 - 1010.002E.FF.FF:   86 frags, hash=$8F1B907E974094F3
+   302	1010.002F.00.00 - 1010.0034.FF.FF:   81 frags, hash=$2684E1CAA3FB8EB7  PEER MISMATCH
+   303	1010.0035.00.00 - 1010.0038.FF.FF:   90 frags, hash=$6D1FAC454620D6BB
+   304	1010.0039.00.00 - 1010.003C.FF.FF:   67 frags, hash=$ADB300A6365F6360
+   305	1010.003D.00.00 - 1010.003D.FF.FF:   99 frags, hash=$CDF517B289695626
+   306	1010.003E.00.00 - 1010.003E.FF.FF:   34 frags, hash=$0365ED0461CA3EDC
+   307	1010.003F.00.00 - 1010.003F.FF.FF:   91 frags, hash=$1EA9199FB3A12017
+   308	1010.0040.00.00 - 1010.0040.FF.FF:   88 frags, hash=$761D4D297B4BFA45
+   309	1010.0041.00.00 - 1010.0044.FF.FF:   87 frags, hash=$1C97513E233AD431
+   310	1010.0045.00.00 - 1010.0046.FF.FF:   22 frags, hash=$382CF99A031E42DE
+   311	1010.0047.00.00 - 1010.0047.FF.FF:  101 frags, hash=$022CA678714C04D5
+   312	1010.0048.00.00 - 1010.004B.FF.FF:   83 frags, hash=$AC0C721830474E1C
+   313	1010.004C.00.00 - 1010.004D.FF.FF:   25 frags, hash=$AA9C89D8384E152E  PEER MISMATCH
+   314	1010.004E.00.00 - 1010.004E.FF.FF:  166 frags, hash=$D82B8A40F2F6B75D
+   315	1010.004F.00.00 - 1010.0054.FF.FF:   90 frags, hash=$64362751D60995DA
+   316	1010.0055.00.00 - 1010.0059.FF.FF:   87 frags, hash=$2771634B6A78AACE
+   317	1010.005A.00.00 - 1010.005C.FF.FF:   91 frags, hash=$10DAD5C8C452DDCB
+   318	1010.005D.00.00 - 1010.0060.FF.FF:   84 frags, hash=$9316E89831EE599B
+   319	1010.0061.00.00 - 1010.0063.00.00:   52 frags, hash=$D3500D0875EC4B66
+   320	
+   321	                               Figure 2
+   322	
+   323	   At this point both nodes take the range mismatches they detected and
+   324	   split them into smaller ranges. 13 of those splits yield a single
+   325	   system ID as range and hence trigger CSNP, PSNP, or full flooding to
+   326	   synchronize the database.  This synchronization follows standard IS-
+   327	   IS behavior and proceeds in parallel, independent of any further ASH
+   328	   exchanges.  In this example, one additional packet is sent with
+   329	   ranges large enough to warrant ASH, as shown in Figure 3.
+   330	
+   331	
+   332	
+   333	
+   334	
+   335	
+   336	Przygienda, et al.        Expires 5 April 2027                  [Page 6]
+   337	
+   338	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   339	
+   340	
+   341	Node1 -> Node2 (after cuts) -> 1 PASH packet(s)
+   342	1010.001D.00.00 - 1010.001F.00.00:   75 frags, hash=$98997F9A286EA1FD  PEER MISMATCH
+   343	1010.0020.00.00 - 1010.0021.FF.FF:   39 frags, hash=$9CFF63C97F8C86D0
+   344	1010.002F.00.00 - 1010.0031.00.00:   61 frags, hash=$498F595B45397172  PEER MISMATCH
+   345	1010.0032.00.00 - 1010.0034.FF.FF:   61 frags, hash=$17E6C25A2881B26E  PEER MISMATCH
+   346	
+   347	                               Figure 3
+   348	
+   349	   Splitting the remaining mismatched ranges on Node 2 will lead to
+   350	   CSNP, PSNP, or full flooding for the affected nodes, since no ranges
+   351	   large enough to warrant further ASH exchange remain.
+   352	
+   353	   Assuming a PSNP strategy for single-system-ID mismatches, the example
+   354	   generates 7 PSNPs from both sides (since PSNPs MUST cover all
+   355	   fragments of a system ID that ASH discovered to be mismatched), plus
+   356	   2 CASHes and 3 PASHes.  This compares favorably to the 62 CSNPs that
+   357	   would normally be required on startup.
+   358	
+   359	3.  Node Ranges
+   360	
+   361	   To discuss node range hashes meaningfully, we refer to hashes
+   362	   covering a wider range of nodes as "less specific" and those covering
+   363	   only a subset of that range as "more specific".
+   364	
+   365	   When nodes advertise node range hashes to each other, it would
+   366	   obviously be useful for cache-based implementations to agree on which
+   367	   ranges to use, as this would make caching much more effective.
+   368	   However, while this seems viable in theory, implementing it across
+   369	   many interfaces would effectively require a global synchronization
+   370	   protocol - something impractical in a network where nodes constantly
+   371	   add, remove, and update fragments asynchronously.  These ongoing
+   372	   changes continually shift what the "optimal" hash ranges are, and
+   373	   with enough churn, such a range negotiation protocol might never
+   374	   converge.
+   375	
+   376	   Alternatively, providing a fast way to reconstruct the Merkle hash
+   377	   for a "mismatched" range reduces the need for perfect range
+   378	   alignment.  Since hashes are built on system ID boundaries,
+   379	   maintaining a Merkle hash per system ID allows a node to quickly
+   380	   recompute the required hashes whenever received ranges differ from
+   381	   cached ones.
+   382	
+   383	
+   384	
+   385	
+   386	
+   387	
+   388	
+   389	
+   390	
+   391	
+   392	Przygienda, et al.        Expires 5 April 2027                  [Page 7]
+   393	
+   394	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   395	
+   396	
+   397	   As a second consideration, even though a fully stable network could
+   398	   in theory be represented by a single hash covering the entire LSDB,
+   399	   doing so is neither desirable nor beneficial.  Since an ASH packet
+   400	   must be sent anyway, it is much better to fill it with as many range
+   401	   hashes as possible.  This limits the work required when a collision
+   402	   occurs within one of the ranges and also reduces the risk of hash
+   403	   collisions, as discussed in Section 10.3.
+   404	
+   405	   In summary, a node should avoid compressing beyond the point where a
+   406	   single ASH covers the entire database.  Ideally, one ASH should
+   407	   contain at most about (MTU / Node Range Hash Entry Size) hashes to
+   408	   keep collision probabilities low, as described in Section 10.3.  Due
+   409	   to the efficiency of recomputing node range hashes on the fly, there
+   410	   is no need to negotiate or agree on ranges with peers.
+   411	
+   412	4.  Hash Functions
+   413	
+   414	4.1.  Hash Function for a Fragment
+   415	
+   416	   Each fragment generates a 64-bit siphash-1-3 [SIPHASH] from its full
+   417	   SNP description.  The salt key is given in Appendix A.
+   418	
+   419	   If a fragment hash computes to zero or to the 64-bit all-ones value,
+   420	   the value MUST be replaced with the constant 1.
+   421	
+   422	   To validate implementation correctness, a reference hash is provided
+   423	   in Figure 4.
+   424	
+   425	   Hash Variant: Siphash-1-3:64Bits
+   426	   Fragment ID: 0101:0101:0000.01-01
+   427	   Seq# $0001
+   428	   Csum: $0001
+   429	   Len: 0512
+   430	   Hash $6EB348F808C9AE4E
+   431	
+   432	                                  Figure 4
+   433	
+   434	4.2.  Fast, Incremental, Self-Inverse Hashing Function for Ranges
+   435	
+   436	   Since large-scale deployments must compute significant numbers of
+   437	   hashes over sets of frequently changing fragments, it is highly
+   438	   desirable to use a specialized hash function that supports fast
+   439	   incremental updates when fragments are added, removed, or when their
+   440	   checksums change.
+   441	
+   442	   Once hashes are built over sets of fragments, it is desirable to
+   443	   support very fast splitting and merging of such sets, especially when
+   444	   two hashes differ in which fragments they contain.
+   445	
+   446	
+   447	
+   448	Przygienda, et al.        Expires 5 April 2027                  [Page 8]
+   449	
+   450	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   451	
+   452	
+   453	   Further discussion of such hashes can be found in [HASHES], but the
+   454	   design space is simplified here since cryptographic security is not a
+   455	   concern.
+   456	
+   457	   The hash for a set of fragments is computed by XORing their
+   458	   individual fragment hashes.  This makes it straightforward and very
+   459	   fast to update the hash when a fragment is added, removed, or its
+   460	   checksum changes.  As a result, less specific ranges can quickly
+   461	   derive their hash by XORing the hashes of all included more specific
+   462	   ranges, when those are available.
+   463	
+   464	   For a non-empty range, if a node range hash computes to zero or to
+   465	   the 64-bit all-ones value, the value MUST be replaced with the
+   466	   constant 1.  Zero is reserved for the terminal wire directive
+   467	   described in Section 5.5.  The all-ones value is reserved and MUST
+   468	   NOT be transmitted.
+   469	
+   470	5.  Procedures
+   471	
+   472	5.1.  ASH Support Negotiation
+   473	
+   474	   Rather than defining a new, dedicated IIH TLV, support for ASH is
+   475	   negotiated using the generic Hello Capability TLV defined in
+   476	   [ID.draft-ginsberg-lsr-hello-capability-00].  This document requests
+   477	   allocation of two bits (Bits TBD) from the "IS-IS Bit Values for
+   478	   Hello Capability TLV Flags" registry created by that document; see
+   479	   Section 12:
+   480	
+   481	   *  *ASH_RX* ("ASH Reception Capable"): the advertising node is
+   482	      willing and able to receive and process CASH/PASH packets on this
+   483	      adjacency in place of CSNPs/PSNPs.
+   484	
+   485	   *  *ASH_TX* ("ASH Transmission Capable"): the advertising node may
+   486	      originate CASH/PASH packets on this adjacency in place of CSNPs/
+   487	      PSNPs.
+   488	
+   489	   A single combined "ASH capable" bit was considered and rejected in
+   490	   favor of these two independent bits: implementations commonly wish to
+   491	   enable ASH asymmetrically -- for example decoding and verifying
+   492	   received ASH packets from a peer while still originating ordinary
+   493	   CSNPs/PSNPs itself (a conservative or "canary" rollout of newly
+   494	   written decode logic), or the converse.  A single bit cannot convey
+   495	   to the peer which direction(s) are actually safe or expected, whereas
+   496	   two independent bits let each side advertise exactly what it will
+   497	   accept and what it may send.
+   498	
+   499	
+   500	
+   501	
+   502	
+   503	
+   504	Przygienda, et al.        Expires 5 April 2027                  [Page 9]
+   505	
+   506	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   507	
+   508	
+   509	   A node MUST NOT originate CASH/PASH packets on an adjacency unless
+   510	   the peer has most recently advertised *ASH_RX* on that adjacency.  A
+   511	   node MUST treat an adjacency as not ASH capable for reception -- i.e.
+   512	   fall back to ordinary CSNP/PSNP processing -- whenever it has not
+   513	   itself advertised *ASH_RX*, regardless of what the peer sends;
+   514	   receipt of a CASH/PASH packet while *ASH_RX* is not being advertised
+   515	   is anomalous input and MUST NOT be treated as fatal to the adjacency
+   516	   -- the implementation SHOULD log the event and fall back to
+   517	   requesting a full CSNP/LSP resynchronization on that adjacency.  Loss
+   518	   of the peer's Hello Capability TLV (adjacency restart, or a peer that
+   519	   does not implement [ID.draft-ginsberg-lsr-hello-capability-00] at
+   520	   all) is equivalent to both bits being clear.
+   521	
+   522	   On broadcast circuits, each level's IIH is a distinct PDU, so the two
+   523	   bits are advertised, and can differ, independently per level.  On
+   524	   point-to-point circuits a single IIH is shared by whichever levels
+   525	   are enabled on that circuit; the Hello Capability TLV of
+   526	   [ID.draft-ginsberg-lsr-hello-capability-00] is not level-scoped, so
+   527	   on a point-to-point circuit running both Level 1 and Level 2,
+   528	   *ASH_RX* and *ASH_TX* necessarily apply identically to both levels;
+   529	   an implementation MUST NOT attempt to advertise or negotiate them
+   530	   differently per level on such a circuit.
+   531	
+   532	   No additional capability information (sub-TLVs) is defined by this
+   533	   document at this time; future extensions may make use of the sub-TLV
+   534	   mechanism of [ID.draft-ginsberg-lsr-hello-capability-00] to advertise
+   535	   additional ASH-related capability information.
+   536	
+   537	5.2.  Advertising and Receiving CASHes
+   538	
+   539	   Advertising of standard CSNPs is extended or replaced with CASH
+   540	   advertisements when this feature is supported.  Analogous to CSNPs,
+   541	   CASHes are sent periodically at the same interval as configured for
+   542	   CSNP advertisement.  Since both CSNPs and CASHes carry range
+   543	   information in their headers, they can be freely mixed, depending on
+   544	   which level of fragment "compression" best fits the situation.  In
+   545	   practice, sufficiently specific range mismatches will naturally fall
+   546	   back to SNP exchanges or flooding to resolve remaining differences.
+   547	
+   548	5.3.  Advertising and Receiving PASHes
+   549	
+   550	   Where PSNPs are used, PASHes may extend or substitute the exchange as
+   551	   long as the rules of Section 5.5 are followed.
+   552	
+   553	
+   554	
+   555	
+   556	
+   557	
+   558	
+   559	
+   560	Przygienda, et al.        Expires 5 April 2027                 [Page 10]
+   561	
+   562	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   563	
+   564	
+   565	5.4.  Broadcast Circuit Operation
+   566	
+   567	   On a broadcast circuit, only the Designated Intermediate System (DIS)
+   568	   for a level MAY originate periodic CASHes for that level.  The DIS
+   569	   MUST NOT replace a CSNP with a CASH unless every Up adjacency at that
+   570	   level has advertised *ASH_RX*. Otherwise it MUST send an ordinary
+   571	   CSNP.
+   572	
+   573	   PASH refinement on a broadcast circuit is performed between the DIS
+   574	   and the non-DIS systems.  The DIS processes PASHes originated by non-
+   575	   DIS systems.  A non-DIS processes PASHes originated by the current
+   576	   DIS, but MUST NOT process a PASH originated by another non-DIS.
+   577	
+   578	   PASHes that would generate the same SNP requests or flooding MAY be
+   579	   reconciled by the DIS before it reacts.
+   580	
+   581	   When refinement on a broadcast circuit reaches a range that is no
+   582	   longer covered by ASH compression, a system participating in the
+   583	   refinement and holding non-purged LSP fragments in that range MUST
+   584	   advertise those fragments using normal IS-IS flooding.  It MUST NOT
+   585	   rely solely on a PSNP exchange to initiate the repair.  PSNP
+   586	   processing on a broadcast circuit is asymmetric: non-DIS systems send
+   587	   PSNPs to the DIS, while the DIS does not send PSNP requests.
+   588	   Flooding the locally held fragments therefore ensures that repair
+   589	   proceeds regardless of whether the fragment absent from one database
+   590	   is held by the DIS or by a non-DIS system.
+   591	
+   592	   A non-DIS that receives a terminal PASH directive from the DIS
+   593	   (encoded as a zero hash on the wire) MUST report the same valid range
+   594	   to the DIS in a zero-hash PASH entry after scheduling any locally
+   595	   held fragments for normal flooding.  This is a role-directed terminal
+   596	   response, not another hash comparison or subdivision step.  The DIS
+   597	   MUST NOT return a terminal directive received from a non-DIS.
+   598	   Together with the PASH source rules above, this prevents directive
+   599	   loops.
+   600	
+   601	5.5.  Refinement Rules
+   602	
+   603	   ASH exchanges are per-level, analogous to CSNP/PSNP exchanges.  CASH
+   604	   and PASH packets are scoped to the IS-IS level (Level 1 or Level 2)
+   605	   of the adjacency on which they are sent, just as CSNPs are.
+   606	
+   607	   Fragments in purge state (remaining lifetime of zero) are NOT
+   608	   included in ASH hash computations, consistent with the treatment of
+   609	   purges in CSNP exchanges.  Purges are handled through normal IS-IS
+   610	   flooding procedures independently of ASH.
+   611	
+   612	
+   613	
+   614	
+   615	
+   616	Przygienda, et al.        Expires 5 April 2027                 [Page 11]
+   617	
+   618	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   619	
+   620	
+   621	   The set of fragments covered by the ASHes sent on a circuit MUST be
+   622	   the same set that a CSNP sent on that circuit would describe.  An
+   623	   implementation that restricts per circuit which LSPs it floods and
+   624	   advertises in CSNPs (e.g., by area address) MUST either compute the
+   625	   ASHes over that restricted set or MUST NOT send ASHes on that
+   626	   circuit.
+   627	
+   628	   When a node receives an ASH where any of the contained hashes does
+   629	   not match after recomputation or comparison, it MUST send PASHes with
+   630	   Merkle hashes covering the mismatched ranges.  These new hashes MUST
+   631	   be more specific than the range where the mismatch occurred.
+   632	
+   633	   Alternatively, instead of more specific PASH hashes, a node MAY treat
+   634	   the mismatched range as a terminal range and repair it immediately as
+   635	   specified in Section 5.5.1.  This may be preferable when the mismatch
+   636	   affects only a small number of LSPs.
+   637	
+   638	   When refinement reaches a range that has no matching non-purged
+   639	   fragments in the local database, silence is not sufficient:
+   640	   independently selected range boundaries can prevent the remote node
+   641	   from reaching the same terminal range.  The node MUST therefore send
+   642	   a PASH entry for the valid, non-inverted range with its hash set to
+   643	   zero.
+   644	
+   645	   A zero hash in a PASH is a terminal repair directive, not a hash
+   646	   mismatch to refine further.  Range validity is checked before
+   647	   interpreting the hash: an entry whose Range End is smaller than its
+   648	   Range Start MUST be discarded even when its hash is zero.  For a
+   649	   valid zero-hash entry, a receiver MUST NOT compare or subdivide the
+   650	   range.  If it holds non-purged fragments in the indicated range, it
+   651	   MUST send every such fragment using normal IS-IS flooding procedures.
+   652	   It MUST NOT answer the directive only with a PSNP, because that would
+   653	   add a redundant request/response round before the same fragments are
+   654	   flooded.  If it holds no such fragments, it performs no further
+   655	   action for that directive, except for the role-directed broadcast
+   656	   response specified in Section 5.4.
+   657	
+   658	   The value zero is reserved and MUST NOT be emitted as the result of
+   659	   any fragment-hash computation or any non-empty range-hash
+   660	   computation.  In a valid Node Range Hash Entry, zero means only that
+   661	   the sender has no locally held non-purged fragments in the terminal
+   662	   range and requests direct flooding by the receiver.  It does not make
+   663	   an otherwise malformed range valid.
+   664	
+   665	   The all-ones value is reserved and MUST NOT be transmitted.
+   666	
+   667	
+   668	
+   669	
+   670	
+   671	
+   672	Przygienda, et al.        Expires 5 April 2027                 [Page 12]
+   673	
+   674	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   675	
+   676	
+   677	   An implementation MAY stop refinement when a mismatching range
+   678	   contains sufficiently few locally held fragments, even when the range
+   679	   covers more than one system ID.  If it holds none of the fragments in
+   680	   that terminal range, it MUST send the zero-hash directive specified
+   681	   above.  If it holds fragments in the range, it MUST repair the range
+   682	   as specified in Section 5.5.1.
+   683	
+   684	5.5.1.  Terminal Range Repair on Point-to-Point Circuits
+   685	
+   686	   Refinement is not symmetric.  A node that sends a PASH entry for a
+   687	   range hands that range over to its neighbor and does not revisit it
+   688	   unless a later ASH exchange mismatches again.  Only the node that
+   689	   decides a received mismatching range is terminal performs the repair,
+   690	   and its neighbor may never reach the same terminal range itself.
+   691	   Range boundaries are chosen deterministically from the local
+   692	   database, so every subsequent CASH round can bottom out at the same
+   693	   terminal range with the same node performing the repair.
+   694	
+   695	   The repair therefore has to work in both directions from one side.
+   696	   It has to deliver fragments that the neighbor lacks and also reveal
+   697	   fragments that only the neighbor holds.  Flooding the locally held
+   698	   fragments, or listing them in a PSNP, achieves only the first: a PSNP
+   699	   or LSP carries no range, so the neighbor learns nothing about LSP IDs
+   700	   that are absent from the sender's database.  If the repairing node is
+   701	   the one missing a fragment, the neighbor neither sends it nor sees a
+   702	   reason to, and the next ASH exchange reaches the same terminal range.
+   703	   The exchange never converges.
+   704	
+   705	   A CSNP whose Start LSP ID and End LSP ID span the terminal range
+   706	   carries exactly the missing information.  A receiver processing it by
+   707	   normal IS-IS rules floods every LSP it holds in that range that is
+   708	   not listed or is listed with an older sequence number, and requests
+   709	   every listed LSP it lacks or holds in an older version.  One PDU, or
+   710	   one series of PDUs, thus repairs both directions.
+   711	
+   712	   Consequently, when a node on a point-to-point circuit performs
+   713	   terminal repair for a range in which it holds non-purged fragments,
+   714	   it MUST send a CSNP (a "range CSNP") that covers the terminal range
+   715	   and lists every non-purged fragment it holds in that range.  It MUST
+   716	   NOT repair such a range with PSNPs or by flooding its own fragments
+   717	   alone.  It MAY additionally flood its fragments in the range, trading
+   718	   redundant LSP transmissions against one round trip.  A range in which
+   719	   the node holds no fragments is repaired with the zero-hash PASH
+   720	   directive specified in Section 5.5.  That directive already makes the
+   721	   neighbor flood everything in the range.
+   722	
+   723	   The following rules apply to range CSNPs:
+   724	
+   725	
+   726	
+   727	
+   728	Przygienda, et al.        Expires 5 April 2027                 [Page 13]
+   729	
+   730	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   731	
+   732	
+   733	   *  The Start and End LSP IDs MUST lie within, or on the boundaries
+   734	      of, the terminal range: the first LSP ID of its lowest system ID
+   735	      through the last LSP ID of its highest system ID.  When the listed
+   736	      fragments do not fit into one PDU, the range is covered by a
+   737	      series of CSNPs with consecutive, non-overlapping LSP ID ranges,
+   738	      as for periodic CSNPs.
+   739	
+   740	   *  A node MAY combine terminal ranges that are contiguous or
+   741	      overlapping into one range CSNP or series.  It SHOULD NOT extend a
+   742	      range CSNP over system IDs outside the ranges found mismatching.
+   743	      The neighbor would flood any fragment the CSNP fails to list
+   744	      there, although those ranges have already been shown to match.
+   745	
+   746	   *  A range CSNP is not a complete CSNP set.  A receiver MUST NOT
+   747	      infer from it that its database is complete, for example for the
+   748	      purposes of [RFC8706].  Because existing implementations may infer
+   749	      the end of a complete set from an End LSP ID equal to the maximum
+   750	      LSP ID, a sender SHOULD NOT send a range CSNP with that End LSP
+   751	      ID.  It ends the range at the preceding LSP ID instead and floods
+   752	      that last fragment directly when it holds it.
+   753	
+   754	   *  Range CSNPs are sent only on adjacencies over which ASH is in use.
+   755	      Their processing by the receiver is the unmodified IS-IS CSNP
+   756	      processing, so no new receiver behavior is required.
+   757	
+   758	   Broadcast circuits follow Section 5.4.
+   759	
+   760	6.  CASH PDU Format
+   761	
+   762	   The CASH PDU format closely follows the CSNP format.  Instead of CSNP
+   763	   entries, it carries the corresponding Merkle hashes - which cover
+   764	   exactly the same fragments that would appear in CSNP packets.  The
+   765	   Start and End System IDs exclude pseudonode bytes, as those are
+   766	   implicitly included within the ranges.
+   767	
+   768	
+   769	
+   770	
+   771	
+   772	
+   773	
+   774	
+   775	
+   776	
+   777	
+   778	
+   779	
+   780	
+   781	
+   782	
+   783	
+   784	Przygienda, et al.        Expires 5 April 2027                 [Page 14]
+   785	
+   786	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   787	
+   788	
+   789	                                          No. of Octets
+   790	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   791	   | Intradomain Routing Protocol        |     1
+   792	   | Discriminator                       |
+   793	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   794	   | Length Indicator                    |     1
+   795	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   796	   | Version/Protocol ID Extension (1)   |     1
+   797	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   798	   | ID Length                           |     1
+   799	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   800	   | R R R   PDU Type                    |     1
+   801	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   802	   | Version (1)                         |     1
+   803	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   804	   | Reserved                            |     1
+   805	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   806	   | Max Area Addresses                  |     1
+   807	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   808	   | PDU Length                          |     2
+   809	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   810	   | Source ID                           |  ID Length + 1
+   811	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   812	   | Start System ID                     |  ID Length
+   813	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   814	   | End System ID                       |  ID Length
+   815	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   816	   | Node Range Hash TLVs                |  Variable
+   817	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   818	
+   819	   The Start and End System IDs use the standard ID length and indicate
+   820	   the range of fragments covered by the ASH, just like CSNPs do.  The
+   821	   key difference is that all pseudonodes of the systems within this
+   822	   range are implicitly included (implying as well that all fragments of
+   823	   the range are included).  Both the Start and End System IDs are
+   824	   inclusive, meaning fragments from both endpoints are part of the
+   825	   range.  All Node Range Hash Entries MUST fall within the bounds
+   826	   defined by the header's Start and End System IDs.
+   827	
+   828	   Unlike CSNPs, which place LSP Entries directly in a dedicated LSP
+   829	   Entries TLV (type 9) whose value is itself just a flat sequence of
+   830	   entries, ASH packets carry their Node Range Hash Entries inside a new
+   831	   Node Range Hash TLV (type TBD), following the standard IS-IS TLV
+   832	   convention of a 1-octet Type, 1-octet Length, and Value:
+   833	
+   834	
+   835	
+   836	
+   837	
+   838	
+   839	
+   840	Przygienda, et al.        Expires 5 April 2027                 [Page 15]
+   841	
+   842	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   843	
+   844	
+   845	                                          No. of Octets
+   846	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   847	   | Type = Node Range Hash TLV (TBD)    |     1
+   848	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   849	   | Length                              |     1
+   850	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   851	   | Node Range Hash Entries             |  Variable
+   852	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   853	
+   854	   The Value of a Node Range Hash TLV is a sorted sequence of Node Range
+   855	   Hash Entries in the following format.
+   856	
+   857	                                          No. of Octets
+   858	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   859	   | Range Start System ID               |  ID Length
+   860	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   861	   | Range End System ID                 |  ID Length
+   862	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   863	   | Merkle Hash                         |     8
+   864	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   865	
+   866	   The range of fragments included in the hash.  Range Start and Range
+   867	   End System IDs are inclusive, i.e.  fragments of both the start and
+   868	   the end system ID are contained within the range.
+   869	
+   870	   The Merkle hash field is 8 octets containing the 64-bit computed hash
+   871	   of all fragments covered by the range.  A computed value MUST NOT be
+   872	   zero.  Zero is the terminal direct-flood directive specified in
+   873	   Section 5.5.  The all-ones value is reserved and MUST NOT be
+   874	   transmitted.
+   875	
+   876	   With the standard ID Length of 6, each entry is 6 + 6 + 8 = 20
+   877	   octets.  Since a TLV's Length field is a single octet, a single Node
+   878	   Range Hash TLV can carry at most 12 entries (12 * 20 = 240 octets,
+   879	   leaving room within the 255-octet maximum TLV value size).  Since
+   880	   Node Range Hash Entries are treated as a single logical sequence
+   881	   regardless of which TLV they appear in, a CASH or PASH PDU MAY, and
+   882	   typically will, carry multiple Node Range Hash TLVs to fit the
+   883	   roughly 70 entries that fit into a standard 1500-byte MTU, exactly as
+   884	   CSNPs carry multiple LSP Entries TLVs when needed.
+   885	
+   886	   The ranges in a CASH MUST be sorted by Range Start System ID across
+   887	   the concatenation of all Node Range Hash TLVs in the PDU, in the
+   888	   order the TLVs appear.  The ranges MUST NOT overlap.  A receiver
+   889	   encountering overlapping ranges MUST treat the union of those ranges
+   890	   as a single range with a zero hash.  Any range exceeding the CASH
+   891	   header bounds MUST be clamped to fit within the CASH range and
+   892	   treated as a zero hash.  A range whose end equals its start is valid
+   893	
+   894	
+   895	
+   896	Przygienda, et al.        Expires 5 April 2027                 [Page 16]
+   897	
+   898	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   899	
+   900	
+   901	   and covers the fragments of that single system ID.  Any range whose
+   902	   end is smaller than its start MUST be discarded.  A node SHOULD log
+   903	   such events since they most likely indicate protocol implementation
+   904	   problems or attacks.
+   905	
+   906	   Any node IDs that are not covered by the ranges in a CASH - either
+   907	   because there are gaps between the advertised ranges, or between
+   908	   those ranges and the ASH's Start and End System IDs - MUST be treated
+   909	   as missing.  Consequently, if a node detects that it holds Merkle
+   910	   hashes for LSPs that are not covered by a received CASH, it MUST
+   911	   behave as it would in the same situation with a CSNP, namely by
+   912	   flooding the missing LSPs.
+   913	
+   914	   As with CSNPs, a CASH whose first range covers the first node in the
+   915	   database MUST use 0000.0000.0000 as the start system ID in its packet
+   916	   header so that missing nodes can be detected.  The same rule applies
+   917	   at the other end: a CASH whose range covers the last node MUST
+   918	   indicate this so that any missing trailing nodes are detectable.
+   919	
+   920	   As with PASHes (Section 7), deployments combining ASH with [RFC9681]
+   921	   fast flooding SHOULD reserve sufficient space within the PDU for a
+   922	   Flooding Parameters TLV, along with any other TLVs that may need to
+   923	   coexist in the same PDU, when computing how many Node Range Hash TLVs
+   924	   and entries fit within the MTU, as described in Section 10.1 and
+   925	   Section 10.2.
+   926	
+   927	7.  PASH PDU Format
+   928	
+   929	   The PASH PDU format closely follows the CASH format while, analogous
+   930	   to PSNP, omits the range of the packet.
+   931	
+   932	
+   933	
+   934	
+   935	
+   936	
+   937	
+   938	
+   939	
+   940	
+   941	
+   942	
+   943	
+   944	
+   945	
+   946	
+   947	
+   948	
+   949	
+   950	
+   951	
+   952	Przygienda, et al.        Expires 5 April 2027                 [Page 17]
+   953	
+   954	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+   955	
+   956	
+   957	                                          No. of Octets
+   958	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   959	   | Intradomain Routing Protocol        |     1
+   960	   | Discriminator                       |
+   961	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   962	   | Length Indicator                    |     1
+   963	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   964	   | Version/Protocol ID Extension (1)   |     1
+   965	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   966	   | ID Length                           |     1
+   967	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   968	   | R R R   PDU Type                    |     1
+   969	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   970	   | Version (1)                         |     1
+   971	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   972	   | Reserved                            |     1
+   973	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   974	   | Max Area Addresses                  |     1
+   975	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   976	   | PDU Length                          |     2
+   977	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   978	   | Source ID                           |  ID Length + 1
+   979	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   980	   | Node Range Hash TLVs                |  Variable
+   981	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   982	
+   983	   As with CASHes, the variable length fields are one or more Node Range
+   984	   Hash TLVs (type TBD, the same TLV type used in CASHes), each carrying
+   985	   the same Node Range Hash Entry format described in Section 6.
+   986	
+   987	   PASHes are equivalent to PSNPs in that entries are treated
+   988	   independently: gaps between entries have no semantics, entries need
+   989	   not be sorted, and may overlap.  A range whose end equals its start
+   990	   is valid and covers the fragments of that single system ID.  Any
+   991	   range whose end is smaller than its start MUST be discarded before
+   992	   its hash is interpreted, including when the hash is zero.  A node
+   993	   SHOULD log such events since they most likely indicate protocol
+   994	   implementation problems or attacks.
+   995	
+   996	   [RFC9681] defines a Flooding Parameters TLV that may be carried in
+   997	   PSNPs to signal fast-flooding-related parameters.  Since PASHes are
+   998	   structurally equivalent to PSNPs, deployments combining ASH with
+   999	   [RFC9681] fast flooding SHOULD reserve sufficient space within the
+  1000	   PDU for the Flooding Parameters TLV, along with any other TLVs that
+  1001	   may need to coexist in the same PDU, when computing how many Node
+  1002	   Range Hash TLVs and entries fit within the MTU, as described in
+  1003	   Section 10.1 and Section 10.2.
+  1004	
+  1005	
+  1006	
+  1007	
+  1008	Przygienda, et al.        Expires 5 April 2027                 [Page 18]
+  1009	
+  1010	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+  1011	
+  1012	
+  1013	8.  Additional TLVs in CASH and PASH PDUs
+  1014	
+  1015	   A CASH replaces a CSNP and a PASH replaces a PSNP; neither may be
+  1016	   less capable than the PDU it replaces.  Every TLV type that an
+  1017	   implementation supports in CSNPs MUST equally be supported in CASHes,
+  1018	   and every TLV type it supports in PSNPs MUST equally be supported in
+  1019	   PASHes, with the same semantics, the same configuration and the same
+  1020	   receive processing.  This includes, but is not limited to, the
+  1021	   Authentication TLV ([RFC5304], [RFC5310]), the Checksum TLV, the
+  1022	   Instance Identifier TLV, and the Flooding Parameters TLV of
+  1023	   [RFC9681].  Deployments therefore do not have to give up any of these
+  1024	   features, and in particular do not have to disable SNP
+  1025	   authentication, in order to use ASH.
+  1026	
+  1027	   Such TLVs MAY appear anywhere in the PDU, before, between or after
+  1028	   the Node Range Hash TLVs, exactly as they may in CSNPs/PSNPs.  A
+  1029	   receiver MUST ignore their position when collecting Node Range Hash
+  1030	   Entries.
+  1031	
+  1032	   Where a TLV is computed over the PDU, it is computed over the
+  1033	   complete CASH or PASH PDU, in the same order and with the same field
+  1034	   treatment as for CSNPs/PSNPs.  In particular the authentication
+  1035	   digest of [RFC5304] and [RFC5310] covers the whole PDU including all
+  1036	   Node Range Hash TLVs, and is computed with the PDU Length field
+  1037	   already carrying the final length.  The authentication configuration
+  1038	   (keys, key chains, algorithms and any per PDU type exemptions) that
+  1039	   applies to CSNPs MUST apply to CASHes, and the one that applies to
+  1040	   PSNPs MUST apply to PASHes.
+  1041	
+  1042	   A receiver MUST perform the same validation of these TLVs that it
+  1043	   performs for a CSNP (for a CASH) or a PSNP (for a PASH), and MUST do
+  1044	   so before any Node Range Hash Entry is compared or triggers any PASH,
+  1045	   PSNP or flooding.  A PDU failing that validation MUST be discarded
+  1046	   exactly as a CSNP/PSNP failing it would be.
+  1047	
+  1048	   The space these TLVs need MUST be reserved when computing how many
+  1049	   Node Range Hash TLVs and entries fit within the MTU (Section 10.1,
+  1050	   Section 10.2), so that adding them never requires dropping or re-
+  1051	   splitting entries.  If the space needed on a circuit exceeds what the
+  1052	   implementation has reserved, it MUST NOT send CASHes or PASHes
+  1053	   without those TLVs on that circuit; it MUST instead fall back to
+  1054	   CSNPs/PSNPs there until sufficient space is reserved.
+  1055	
+  1056	
+  1057	
+  1058	
+  1059	
+  1060	
+  1061	
+  1062	
+  1063	
+  1064	Przygienda, et al.        Expires 5 April 2027                 [Page 19]
+  1065	
+  1066	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+  1067	
+  1068	
+  1069	9.  CASH Example
+  1070	
+  1071	   A more detailed example will clarify CASHes further.  Consider an
+  1072	   LSDB with nodes having system IDs of 1000.0000.00<2 digits node-id>,
+  1073	   with node-id in the range 0 - 512.  Each node holds 32 fragments
+  1074	   numbered 0 - 31.  We assume only nodes with even identifiers are
+  1075	   present, intentionally creating "holes" in the numbering and leaving
+  1076	   us with 257 nodes.  The pseudonode byte is treated simply as part of
+  1077	   the system ID since it does not affect the scheme.
+  1078	
+  1079	   For readability, the figures below show the Node Range Hash TLV Type/
+  1080	   Length header (see Section 6) only for the first such TLV in each
+  1081	   packet; entries beyond what fits in that first TLV (at most 12 per
+  1082	   TLV) continue in additional Node Range Hash TLVs whose headers are
+  1083	   omitted for brevity.
+  1084	
+  1085	   In a stable state, reasonable compression can deliver 129 "first-
+  1086	   order" leaves - each containing fragments from 2 systems (64
+  1087	   fragments total) - requiring roughly 129 / 70 ~ 2 packets.  The first
+  1088	   of these "first-order" packets would look approximately like this:
+  1089	
+  1090	        ...
+  1091	
+  1092	+--------------------------------------------+
+  1093	|  Start System ID: 0000.0000.0000           |
+  1094	+--------------------------------------------+
+  1095	|  End System ID:   0000.0000.00A0           | // 80 ranges covering 160 nodes
+  1096	+--------------------------------------------+
+  1097	|  Type = Node Range Hash TLV (TBD)          |
+  1098	+--------------------------------------------+
+  1099	|  Length                                    |
+  1100	+--------------------------------------------+
+  1101	|  Start System ID: 1000.0000.0000           |
+  1102	+--------------------------------------------+
+  1103	|  End System ID:   1000.0000.0002           | // 64 fragments over 2 systems
+  1104	+--------------------------------------------+
+  1105	|              Merkle Hash                   |
+  1106	+--------------------------------------------+
+  1107	...
+  1108	|  Start System ID: 1000.0000.008E           |
+  1109	+--------------------------------------------+
+  1110	|  End System ID:   1000.0000.00A0           |
+  1111	+--------------------------------------------+
+  1112	|              Merkle Hash                   | // 64 fragments over 2 systems
+  1113	+--------------------------------------------+
+  1114	        ... // remaining entries continue in further Node Range Hash TLVs,
+  1115	            // each with its own Type/Length header (omitted here for brevity)
+  1116	
+  1117	
+  1118	
+  1119	
+  1120	Przygienda, et al.        Expires 5 April 2027                 [Page 20]
+  1121	
+  1122	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+  1123	
+  1124	
+  1125	                               Figure 5
+  1126	
+  1127	   Based on local decisions, a node can further compress ASHs until - in
+  1128	   the most extreme case - it sends just one packet full of hashes.  In
+  1129	   our example with 256 nodes, this divides them across 70 hashes
+  1130	   (assuming equal fragment counts for simplicity), resulting in about 4
+  1131	   nodes per hash (equivalent to 4 * 32 fragments).  The resulting
+  1132	   packet would look like this:
+  1133	
+  1134	        ...
+  1135	
+  1136	+--------------------------------------------+
+  1137	|  Start System ID: 0000.0000.0000           |
+  1138	+--------------------------------------------+
+  1139	|  End System ID:   FFFF.FFFF.FFFF           |
+  1140	+--------------------------------------------+
+  1141	|  Type = Node Range Hash TLV (TBD)          |
+  1142	+--------------------------------------------+
+  1143	|  Length                                    |
+  1144	+--------------------------------------------+
+  1145	|  Start System ID: 1000.0000.0000           |
+  1146	+--------------------------------------------+
+  1147	|  End System ID:   1000.0000.0010           |
+  1148	+--------------------------------------------+
+  1149	|              Merkle Hash                   |
+  1150	...
+  1151	+--------------------------------------------+
+  1152	|  Start System ID: 1000.0000.01F0           |
+  1153	+--------------------------------------------+
+  1154	|  End System ID:   1000.0000.0200           |
+  1155	+--------------------------------------------+
+  1156	|              Merkle Hash                   |
+  1157	+--------------------------------------------+
+  1158	        ... // remaining entries continue in further Node Range Hash TLVs,
+  1159	            // each with its own Type/Length header (omitted here for brevity)
+  1160	
+  1161	                               Figure 6
+  1162	
+  1163	10.  Further Considerations
+  1164	
+  1165	10.1.  IS-IS Scale Envelope
+  1166	
+  1167	   ASHs provide negligible benefit in small networks with only tens of
+  1168	   nodes and hundreds of fragments.  Perfect flooding would
+  1169	   theoretically suffice at any scale (though history shows this is too
+  1170	   optimistic), and CSNPs under such assumptions represent protocol
+  1171	   overhead only - yet they have significantly contributed to IS-IS
+  1172	   stability in real deployments.
+  1173	
+  1174	
+  1175	
+  1176	Przygienda, et al.        Expires 5 April 2027                 [Page 21]
+  1177	
+  1178	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+  1179	
+  1180	
+  1181	   As networks grow larger, the costs of link flaps, node restarts, and
+  1182	   periodic CSNP exchanges increase substantially.  ASHs can
+  1183	   significantly extend IS-IS scalability in these scenarios.
+  1184	
+  1185	   To push IS-IS to its practical limits, we must account for flooding
+  1186	   rates driven by fragment refreshes and LSDB synchronization.  Path
+  1187	   computation impacts can be deferred - barring pathological scenarios
+  1188	   - through dampening and parallelization, so we focus on realistic
+  1189	   scenarios on the order of 50,000 nodes and 1 million fragments.  We
+  1190	   assume an outer envelope of 16K peers, which provides some margin
+  1191	   over the largest deployments realized today.
+  1192	
+  1193	   At maximum configured lifetime of 65K seconds, this generates ~15
+  1194	   packets/second per interface from refreshes (1M/65K fragments/
+  1195	   second), plus periodically ~10,000 CSNP packets for full LSDB sync.
+  1196	
+  1197	   Achieving sync within a modest 120 seconds requires ~80 CSNPs/second,
+  1198	   and across 16,000 interfaces this represents a peak of 1.5 million
+  1199	   packets/second - far beyond current fast-flooding capabilities.  We
+  1200	   disregard here techniques like [ID.draft-ietf-lsr-distoptflood-11],
+  1201	   especially since they do not improve CSNP scale.
+  1202	
+  1203	   With maximum ASH compression, however, sync overhead drops to roughly
+  1204	   one additional packet beyond refresh flooding, leaving ~250,000
+  1205	   packets/second (15 * 16K) to be handled by fast flooding and flood
+  1206	   reduction techniques - a challenging but feasible target.
+  1207	
+  1208	   The above makes it clear that combining fast flooding, flood
+  1209	   reduction, and ASH will be essential for extending IS-IS scalability
+  1210	   as deployments continue to grow.
+  1211	
+  1212	10.2.  Maximum Advisable Hash Coverage
+  1213	
+  1214	   Although the mechanism can theoretically use a single Merkle hash to
+  1215	   represent an arbitrarily large database, such an approach is not
+  1216	   advisable.  Instead, it is far preferable to limit hash coverage so
+  1217	   that at minimum one full ASH packet is required.
+  1218	
+  1219	   In practice, limiting compression so that a maximum of about a dozen
+  1220	   ASH packets covers the entire database is usually sufficient.  For
+  1221	   example, a single maximally compressed ASH packet for a 10,000 -
+  1222	   fragment database covers ~140 fragments per hash.  Allowing for more
+  1223	   ASH packets (e.g., 10 instead of 100 CSNPs) still provides a 10x
+  1224	   compression factor, reduces disaggregation needs during LSDB changes,
+  1225	   and further lowers the already negligible collision risk (which in
+  1226	   10K sized LSDB is however vanishingly small with a single hash
+  1227	   already).
+  1228	
+  1229	
+  1230	
+  1231	
+  1232	Przygienda, et al.        Expires 5 April 2027                 [Page 22]
+  1233	
+  1234	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+  1235	
+  1236	
+  1237	10.3.  Hash Collision Probabilities
+  1238	
+  1239	   Even with CSNPs or PSNPs, IS-IS has a corner case where LSDB
+  1240	   synchronization can fail - particularly during node restarts.  In
+  1241	   simple terms, if a new fragment has the same sequence number and
+  1242	   different content but an identical 16-bit Fletcher checksum, the
+  1243	   collision goes undetected until the fragment expires.
+  1244	
+  1245	   Assuming Fletcher checksums are uniformly distributed (even with
+  1246	   minor content changes), the collision probability for that case is
+  1247	   1/2**16 ~ 0.0015%. This baseline enables meaningful comparisons with
+  1248	   ASH Fletcher collision probabilities.
+  1249	
+  1250	   ASH uses 64-bit [SIPHASH] over what is essentially PSNP data for a
+  1251	   fragment plus its IS-IS PDU length.  The key concern is the
+  1252	   probability that two fragments covered by the same hash produce
+  1253	   identical hashes simultaneously.  This would cause both fragments to
+  1254	   "cancel out" due to the XOR nature.  Collisions between fragments in
+  1255	   different node range hashes are irrelevant.
+  1256	
+  1257	   One might argue that XORing different sets of hashes could produce
+  1258	   the same result, but the probability of two distinct sets having
+  1259	   identical modulo-1 sums across all 64 bits is vanishingly small.
+  1260	   This scenario is not considered further.
+  1261	
+  1262	   Collision probability analysis is complex for the general case,
+  1263	   though the birthday paradox gives a rough estimate of 0.18% collision
+  1264	   likelihood for 48-bit hashes in a 1M-sized set.  For 64-bit hashes
+  1265	   this reduces to ~0.000,002,7%. Rather than relying solely on
+  1266	   statistical assumptions, we use extensive simulations that mirror
+  1267	   real-world conditions.
+  1268	
+  1269	   These simulations model 50,000-node networks with 1M fragments,
+  1270	   assuming node IDs differ by only 3 bytes, maximum fragment lifetimes,
+  1271	   random protocol checksums on fragment refresh, and packet length
+  1272	   changes in just 5% of refreshes to reflect network stability.
+  1273	   Results are derived from 32 networks running for 2 years each.
+  1274	
+  1275	
+  1276	
+  1277	
+  1278	
+  1279	
+  1280	
+  1281	
+  1282	
+  1283	
+  1284	
+  1285	
+  1286	
+  1287	
+  1288	Przygienda, et al.        Expires 5 April 2027                 [Page 23]
+  1289	
+  1290	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+  1291	
+  1292	
+  1293	   Across 64 years of simulated time and the resulting 36E9 fragment
+  1294	   refreshes, we observed 142 collisions for the 48-bit variant of
+  1295	   [SIPHASH] across the whole set, or roughly ~0.000,000,4% - much lower
+  1296	   than the birthday paradox prediction.  However, assuming a single
+  1297	   maximum-size ASH packet covering the entire database, only 3 of those
+  1298	   collisions matter - a probability of ~0.000,000,008%, or roughly 1
+  1299	   occurrence per 20 years.  These collisions have an average lifetime
+  1300	   of about 10 hours.  The rates are orders of magnitude lower than
+  1301	   birthday paradox predictions, likely because node IDs act as a
+  1302	   consistent "salt" that effectively pre-partitions the probability
+  1303	   space.  This is arguably "good enough" by a wide margin.
+  1304	
+  1305	   Nevertheless, further investigation using the standard 64-bit SipHash
+  1306	   1-3 variant over the same scenario produces *no* detectable
+  1307	   collisions.  Measuring the CPU cost of the 48-bit variant vs. the
+  1308	   64-bit variant (or even 64-bit traditional Fletcher checksum) shows
+  1309	   negligible differences of low single-digit percent with modern
+  1310	   implementation techniques.  Thus, 64-bit [SIPHASH] 1-3 has been
+  1311	   chosen and should provide a very safe margin even for much larger
+  1312	   databases.
+  1313	
+  1314	   Ultimately, a highly conservative (not to say paranoid)
+  1315	   implementation can simply monitor the LSDB for colliding fragment
+  1316	   hashes and exclude them from the same ASH hash.  This forces
+  1317	   receiving nodes to use separate collision-free hashes instead.  Such
+  1318	   an approach completely eliminates any risk of synchronization misses
+  1319	   when using ASHs.
+  1320	
+  1321	   Other techniques are possible, such as slowly walking the database
+  1322	   and sending CSNPs.  However, for a 1M-fragment database that
+  1323	   generates 10,000 such CSNP packets, the chance of this detecting a
+  1324	   collision during its 10-hour window is rather unlikely.
+  1325	
+  1326	10.4.  Impact of Packet Losses
+  1327	
+  1328	   Hashes covering large numbers of fragments are more vulnerable to
+  1329	   packet losses, as each lost packet affects a much larger portion of
+  1330	   the LSDB during synchronization.  Implementations can choose ASH node
+  1331	   ranges freely, but should balance maximum compression against "good
+  1332	   enough" compression that reduces both collision risk and
+  1333	   vulnerability to possible packet drops.
+  1334	
+  1335	
+  1336	
+  1337	
+  1338	
+  1339	
+  1340	
+  1341	
+  1342	
+  1343	
+  1344	Przygienda, et al.        Expires 5 April 2027                 [Page 24]
+  1345	
+  1346	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+  1347	
+  1348	
+  1349	10.5.  Decompression and Caching/Comparison Optimizations
+  1350	
+  1351	   As mentioned earlier, nodes can use various strategies to accelerate
+  1352	   decompression.  For example, LSPs missing from CASHes (those not
+  1353	   covered by any ranges) are clearly absent and can be immediately
+  1354	   reflooded.  Similarly, small mismatched ranges can trigger immediate
+  1355	   CSNPs, PSNPs, or direct flooding.
+  1356	
+  1357	   Caching of hashes can be applied at many levels.  The simplest and
+  1358	   most useful approach is maintaining a hash for all fragments of a
+  1359	   node and its pseudonodes, though other granularities work equally
+  1360	   well.  Even when adjusting for changes - such as receiving a range <
+  1361	   A - B > while having cached < A - B & next-after-B > - the cached
+  1362	   hash can be quickly updated by simply XORing out the next-after-B
+  1363	   node Merkle hash.
+  1364	
+  1365	   Implementations that adapt ASH compression from observed comparison
+  1366	   results should distinguish positive evidence from negative evidence.
+  1367	   A matching range hash is strong evidence that every node covered by
+  1368	   that range matched and can therefore justify maintaining or
+  1369	   increasing compression for those nodes.  In contrast, a mismatching
+  1370	   coarse range proves only that at least one covered node differs; it
+  1371	   does not identify which node or nodes caused the mismatch.
+  1372	   Implementations should therefore avoid assigning that negative result
+  1373	   to every node in the range.  Instead, they should use progressively
+  1374	   finer PASH comparisons, and ultimately SNP comparison or flooding, to
+  1375	   obtain sufficiently specific evidence before reducing compression for
+  1376	   individual nodes.  Otherwise, a small localized change can
+  1377	   incorrectly drive an entire coarse range toward little or no
+  1378	   compression.
+  1379	
+  1380	10.6.  Reconciliation Pacing and Amplification Avoidance
+  1381	
+  1382	   A node that detects a mismatch in a received CASH refines the
+  1383	   disputed range with progressively more specific PASHes until the
+  1384	   hashes match or refinement reaches a range that requires normal SNP
+  1385	   exchange or flooding (see Section 5.5).  The PASH refinement and the
+  1386	   subsequent repair form one reconciliation attempt.  A reconciliation
+  1387	   remains pending while the node has PASHes or PSNPs to send, or while
+  1388	   LSP transmissions or retransmissions resulting from that
+  1389	   reconciliation remain outstanding.
+  1390	
+  1391	   A new periodic CASH sent while a previous reconciliation remains
+  1392	   pending typically rediscovers the same disagreement and starts an
+  1393	   overlapping refinement.  Two overlapping attempts can produce roughly
+  1394	   twice the PASH, PSNP, and LSP traffic of one; additional attempts
+  1395	   increase the traffic further without a natural bound.  In a
+  1396	   ~6,700-fragment/40-node experiment, overlapping attempts generated
+  1397	
+  1398	
+  1399	
+  1400	Przygienda, et al.        Expires 5 April 2027                 [Page 25]
+  1401	
+  1402	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+  1403	
+  1404	
+  1405	   PSNP requests equal to roughly five times the total fragment count,
+  1406	   with the count still increasing when observed.  The amplification
+  1407	   resulted from overlapping reconciliation attempts rather than from
+  1408	   the topology scale or hash function.
+  1409	
+  1410	   For each peer and level, a node MUST limit reconciliation to one
+  1411	   attempt at a time.  The node MUST NOT send a new periodic CASH while
+  1412	   PASHes or PSNPs from the previous attempt remain to be sent, or while
+  1413	   LSP transmissions or retransmissions resulting from that attempt
+  1414	   remain outstanding.  The next periodic CASH can start after all such
+  1415	   work has completed.  This requirement bounds the traffic caused by
+  1416	   each divergence while delaying only a redundant probe.
+  1417	
+  1418	   Before a peer session completes its initial full-coverage CASH
+  1419	   exchange, a node MAY use ordinary CSNP framing as a conservative
+  1420	   fallback.  After that exchange completes, deferring a periodic CASH
+  1421	   does not require the node to introduce a CSNP.  Implementations
+  1422	   SHOULD expose a counter for deferred CASH cycles.  Such a counter
+  1423	   identifies peers that do not complete reconciliation and helps
+  1424	   determine whether the periodic interval is shorter than the time
+  1425	   required to exchange the necessary PASHes, PSNPs, and LSPs.
+  1426	
+  1427	   When refinement reaches a range that requires normal SNP exchange or
+  1428	   flooding, the node MUST initiate that repair without waiting for
+  1429	   another periodic CASH.  Transitioning from PASH refinement to SNP
+  1430	   exchange or flooding does not complete the reconciliation attempt;
+  1431	   completion occurs only after the required PASHes, PSNPs, and
+  1432	   resulting LSP transmissions and retransmissions have completed.
+  1433	
+  1434	   ASH repair can generate a large number of PSNP entries while received
+  1435	   repair LSPs simultaneously require acknowledgment.  When an
+  1436	   implementation schedules both classes of entry through the same PSNP
+  1437	   transmission mechanism, it SHOULD transmit acknowledgments for
+  1438	   received LSPs before PSNP entries generated to request or describe
+  1439	   further reconciliation.  Delaying those acknowledgments behind a
+  1440	   reconciliation backlog can cause the sender's retransmission timer to
+  1441	   expire, adding duplicate LSP traffic and extending convergence.  A
+  1442	   PSNP can use any space remaining after the acknowledgments for
+  1443	   reconciliation entries.
+  1444	
+  1445	11.  Security Considerations
+  1446	
+  1447	   ASH security relies on the same mechanisms protecting IS-IS PDU
+  1448	   integrity.  As required in Section 8, CASHes and PASHes are
+  1449	   authenticated with the same mechanisms ([RFC5304], [RFC5310]) and
+  1450	   configuration as the CSNPs and PSNPs they replace, so enabling ASH
+  1451	   neither weakens nor removes SNP authentication.
+  1452	
+  1453	
+  1454	
+  1455	
+  1456	Przygienda, et al.        Expires 5 April 2027                 [Page 26]
+  1457	
+  1458	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+  1459	
+  1460	
+  1461	   A received hash drives more work than a received CSNP entry: a
+  1462	   mismatch triggers further PASHes, PSNPs and flooding.  Validating
+  1463	   authentication before any of this happens is therefore required, so
+  1464	   that an unauthenticated PDU cannot trigger that work.
+  1465	
+  1466	12.  IANA Considerations
+  1467	
+  1468	   IANA is requested to allocate two bits from the "IS-IS Bit Values for
+  1469	   Hello Capability TLV Flags" registry defined in
+  1470	   [ID.draft-ginsberg-lsr-hello-capability-00], named "ASH_RX" and
+  1471	   "ASH_TX", indicating respectively that the advertising node is
+  1472	   willing to receive and process, and/or may originate, ASH (CASH/PASH)
+  1473	   packets on that adjacency in place of CSNPs/PSNPs.
+  1474	
+  1475	   IANA is requested to allocate a codepoint (type TBD) from the "IS-IS
+  1476	   TLV Codepoints" registry for the Node Range Hash TLV, valid within
+  1477	   CASH and PASH PDUs as defined in Section 6 and Section 7.
+  1478	
+  1479	   IANA is requested to allocate two new codepoints from the "PDU Types"
+  1480	   registry under "Intermediate System to Intermediate System (IS-IS)
+  1481	   Parameters", one for the CASH PDU and one for the PASH PDU, analogous
+  1482	   to the existing Level 1 and Level 2 Complete/Partial SNP codepoints,
+  1483	   as follows:
+  1484	
+  1485	                         +=======+==============+
+  1486	                         | Value | Description  |
+  1487	                         +=======+==============+
+  1488	                         |  TBD1 | Level 1 CASH |
+  1489	                         +-------+--------------+
+  1490	                         |  TBD2 | Level 2 CASH |
+  1491	                         +-------+--------------+
+  1492	                         |  TBD3 | Level 1 PASH |
+  1493	                         +-------+--------------+
+  1494	                         |  TBD4 | Level 2 PASH |
+  1495	                         +-------+--------------+
+  1496	
+  1497	                                 Table 1
+  1498	
+  1499	   As with existing SNP PDU types, separate Level 1 and Level 2
+  1500	   codepoints are requested for both CASH and PASH so that the PDU Type
+  1501	   field alone identifies both the packet's function and the level it
+  1502	   applies to.
+  1503	
+  1504	13.  Contributors
+  1505	
+  1506	   TBD
+  1507	
+  1508	
+  1509	
+  1510	
+  1511	
+  1512	Przygienda, et al.        Expires 5 April 2027                 [Page 27]
+  1513	
+  1514	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+  1515	
+  1516	
+  1517	14.  Acknowledgement
+  1518	
+  1519	   People have been talking about "compressing CSNPs" for a very long
+  1520	   time, reportedly going back to when Radia Perlman and an insomniac
+  1521	   Dave Katz were walking the halls discussing it.  Recent attempts to
+  1522	   scale the protocol much further have made it worthwhile to turn this
+  1523	   idea into a standardized, practical engineering solution.
+  1524	
+  1525	   Les Ginsberg identified several unresolved issues and contributed
+  1526	   alternative ideas to the draft.
+  1527	
+  1528	   Job Snijders initiated the discussion of [SIPHASH] as a likely better
+  1529	   solution than traditional Fletcher checksumming of fragments.
+  1530	
+  1531	   Claude (Anthropic) [CLAUDE] assisted in reviewing the draft
+  1532	   specification, identifying ambiguities in zero-hash semantics,
+  1533	   overlap handling, and PDU header-to-entry range relationships.
+  1534	
+  1535	15.  References
+  1536	
+  1537	15.1.  Normative References
+  1538	
+  1539	   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+  1540	              Requirement Levels", BCP 14, RFC 2119,
+  1541	              DOI 10.17487/RFC2119, March 1997,
+  1542	              <https://www.rfc-editor.org/rfc/rfc2119>.
+  1543	
+  1544	   [RFC5304]  Li, T. and R. Atkinson, "IS-IS Cryptographic
+  1545	              Authentication", RFC 5304, DOI 10.17487/RFC5304, October
+  1546	              2008, <https://www.rfc-editor.org/rfc/rfc5304>.
+  1547	
+  1548	   [RFC5310]  Bhatia, M., Manral, V., Li, T., Atkinson, R., White, R.,
+  1549	              and M. Fanto, "IS-IS Generic Cryptographic
+  1550	              Authentication", RFC 5310, DOI 10.17487/RFC5310, February
+  1551	              2009, <https://www.rfc-editor.org/rfc/rfc5310>.
+  1552	
+  1553	   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+  1554	              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+  1555	              May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
+  1556	
+  1557	15.2.  Informative References
+  1558	
+  1559	   [CLAUDE]   Anthropic, "Claude: AI Assistant", 2025,
+  1560	              <https://www.anthropic.com/claude>.
+  1561	
+  1562	   [HASHES]   Phan, C.-W., "Security considerations for incremental hash
+  1563	              functions based on pair block chaining", 2006.
+  1564	
+  1565	
+  1566	
+  1567	
+  1568	Przygienda, et al.        Expires 5 April 2027                 [Page 28]
+  1569	
+  1570	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+  1571	
+  1572	
+  1573	   [ID.draft-ginsberg-lsr-hello-capability-00]
+  1574	              Ginsberg et al., L., "IS-IS Hello Capability", August
+  1575	              2026, <https://www.ietf.org/id/draft-ginsberg-lsr-hello-
+  1576	              capability-00.txt>.
+  1577	
+  1578	   [ID.draft-ietf-lsr-distoptflood-11]
+  1579	              White et al., R., "IS-IS Distributed Flooding Reduction",
+  1580	              October 2025, <https://www.ietf.org/id/draft-ietf-lsr-
+  1581	              distoptflood-11.txt>.
+  1582	
+  1583	   [MERKLE]   Merkle, R.C., "A Digital Signature Based on a Conventional
+  1584	              Encryption Function", 1988.
+  1585	
+  1586	   [RFC8706]  Ginsberg et al., L., "Restart Signaling for IS-IS",
+  1587	              RFC 8706, DOI 10.17487/RFC8706, February 2020,
+  1588	              <https://www.rfc-editor.org/rfc/rfc8706>.
+  1589	
+  1590	   [RFC9681]  Decraene et al., B., "IS-IS Fast Flooding", RFC 9681,
+  1591	              DOI 10.17487/RFC9681, November 2024,
+  1592	              <https://www.rfc-editor.org/rfc/rfc9681>.
+  1593	
+  1594	   [SIPHASH]  Aumasson, J.-P. and D. J. Bernstein, "SipHash: A Fast
+  1595	              Short-Input PRF", Lecture Notes in Computer Science Vol.
+  1596	              7668, INDOCRYPT 2012, pp. 489-508, 2012,
+  1597	              <https://131002.net/siphash/>.
+  1598	
+  1599	   [SKIP]     Pugh, W., "Skip lists: A probabilistic alternative to
+  1600	              balanced trees", 1990.
+  1601	
+  1602	Appendix A.  Reference Implementation of SIP Fragment Hashing
+  1603	
+  1604	
+  1605	
+  1606	
+  1607	
+  1608	
+  1609	
+  1610	
+  1611	
+  1612	
+  1613	
+  1614	
+  1615	
+  1616	
+  1617	
+  1618	
+  1619	
+  1620	
+  1621	
+  1622	
+  1623	
+  1624	Przygienda, et al.        Expires 5 April 2027                 [Page 29]
+  1625	
+  1626	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+  1627	
+  1628	
+  1629	   <CODE BEGINS>
+  1630	   pub fn fragment_hash(
+  1631	       fragmentid: &SharedFragmentID,
+  1632	       fragmentcontent: &FragmentContent,
+  1633	   ) -> ASHHash {
+  1634	       let nid = fragmentid.node.node_id().0;
+  1635	       let pnodebe = fragmentid.pnode.0.to_be_bytes();
+  1636	       let seqnrbe = fragmentcontent.seqnr.0.to_be_bytes();
+  1637	       let fragmentnrbe = fragmentid.fragmentnr.0.to_be_bytes();
+  1638	       let csumbe = fragmentcontent.isis_checksum.0.to_be_bytes();
+  1639	       let lenbe = fragmentcontent.isis_pdu_length.0.to_be_bytes();
+  1640	
+  1641	       let rotate_in_primary = nid.iter().chain(
+  1642	           csumbe.iter().chain(
+  1643	               seqnrbe.iter().chain(
+  1644	                   fragmentnrbe
+  1645	                       .iter()
+  1646	                       .chain(lenbe.iter().chain(pnodebe.iter())),
+  1647	               ),
+  1648	           ),
+  1649	       );
+  1650	
+  1651	       let key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16u8];
+  1652	       let mut hasher = SipHasher13::new_with_key(&key);
+  1653	       let mut sl = [0u8; 16];
+  1654	       rotate_in_primary
+  1655	           .copied()
+  1656	           .collect_slice_checked(&mut sl[..]);
+  1657	       hasher.write(&sl);
+  1658	       let hash = ASHHash(hasher.finish());
+  1659	
+  1660	       if hash == EMPTY_ASHHASH || hash == ASHHash(u64::MAX) {
+  1661	           ASHHash(1)
+  1662	       } else {
+  1663	           hash
+  1664	       }
+  1665	   }
+  1666	   <CODE ENDS>
+  1667	
+  1668	Authors' Addresses
+  1669	
+  1670	   Tony Przygienda
+  1671	   HPE Juniper Networking
+  1672	   Email: antoni.przygienda@hpe.com
+  1673	
+  1674	
+  1675	   Tony Li
+  1676	   HPE Juniper Networking
+  1677	
+  1678	
+  1679	
+  1680	Przygienda, et al.        Expires 5 April 2027                 [Page 30]
+  1681	
+  1682	Internet-Draft      IS-IS Aggregated SNP Hash Packets       October 2026
+  1683	
+  1684	
+  1685	   Email: anthony.li@hpe.com
+  1686	
+  1687	
+  1688	   Joel Halpern
+  1689	   HPE Juniper Networking
+  1690	   Email: joel.halpern@hpe.com
+  1691	
+  1692	
+  1693	
+  1694	
+  1695	
+  1696	
+  1697	
+  1698	
+  1699	
+  1700	
+  1701	
+  1702	
+  1703	
+  1704	
+  1705	
+  1706	
+  1707	
+  1708	
+  1709	
+  1710	
+  1711	
+  1712	
+  1713	
+  1714	
+  1715	
+  1716	
+  1717	
+  1718	
+  1719	
+  1720	
+  1721	
+  1722	
+  1723	
+  1724	
+  1725	
+  1726	
+  1727	
+  1728	
+  1729	
+  1730	
+  1731	
+  1732	
+  1733	
+  1734	
+  1735	
+  1736	Przygienda, et al.        Expires 5 April 2027                 [Page 31]
