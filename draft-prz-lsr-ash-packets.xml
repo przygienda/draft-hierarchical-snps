@@ -200,7 +200,10 @@
                 over progressively smaller ranges. Once a range reaches an implementation's terminal
                 repair threshold, a CSNP scoped to that range (or, when the node holds nothing in the
                 range, a zero-hash PASH directive) synchronizes the databases in the
-                traditional IS-IS manner, see <xref target="terminal-repair"/>. A terminal range can
+                traditional IS-IS manner, see <xref target="terminal-repair"/>. On broadcast
+                circuits, the DIS sends the range CSNP, with non-DIS systems requesting it
+                using a zero-hash PASH as specified in <xref target="broadcast-circuits"/>.
+                A terminal range can
                 cover one or more system IDs. ASH operates
                 at the resolution of a system ID (including its pseudonodes), not individual fragments.
             </t>
@@ -819,28 +822,46 @@ Hash $6EB348F808C9AE4E
                     <bcp14>MAY</bcp14> be reconciled by the DIS before it reacts.
                 </t>
                 <t>
-                    When refinement on a broadcast circuit reaches a range that is no
-                    longer covered by ASH compression, a system participating in the
-                    refinement and holding non-purged LSP fragments in that range
-                    <bcp14>MUST</bcp14> advertise those fragments using normal IS-IS
-                    flooding. It <bcp14>MUST NOT</bcp14> rely solely on a PSNP exchange
-                    to initiate the repair. PSNP processing on a broadcast circuit is
-                    asymmetric: non-DIS systems send PSNPs to the DIS, while the DIS
-                    does not send PSNP requests. Flooding the locally held fragments
-                    therefore ensures that repair proceeds regardless of whether the
-                    fragment absent from one database is held by the DIS or by a
-                    non-DIS system.
+                    Terminal repair on a broadcast circuit has the same requirement as
+                    point-to-point repair: flooding locally held fragments or listing them in
+                    PSNPs alone cannot reveal fragments held only by the other system.
+                    The other system need not independently reach the same terminal range.
+                    Only the DIS originates the range CSNPs used for this repair; a non-DIS
+                    <bcp14>MUST NOT</bcp14> originate a range CSNP.
                 </t>
                 <t>
-                    A non-DIS that receives a terminal PASH directive from the DIS (encoded
-                    as a zero hash on the wire)
-                    <bcp14>MUST</bcp14> report the same valid range to the DIS in a
-                    zero-hash PASH entry after scheduling any locally held fragments
-                    for normal flooding. This is a role-directed terminal response,
-                    not another hash comparison or subdivision step. The DIS
-                    <bcp14>MUST NOT</bcp14> return a terminal directive received
-                    from a non-DIS. Together with the PASH source rules above, this
-                    prevents directive loops.
+                    When the DIS decides that a received mismatching range is terminal,
+                    it <bcp14>MUST</bcp14> send a range CSNP covering that range and listing
+                    its locally held non-purged fragments. It <bcp14>MUST</bcp14> do so
+                    even when it holds no such fragments: an empty range CSNP makes
+                    non-DIS systems flood fragments they hold in that range.
+                </t>
+                <t>
+                    When a non-DIS decides that a received mismatching range is terminal,
+                    or receives a valid zero-hash PASH directive from the DIS, it
+                    <bcp14>MUST</bcp14> schedule its locally held non-purged fragments in
+                    that range for normal flooding and send a zero-hash PASH entry for
+                    the same range to the DIS. It <bcp14>MUST</bcp14> send this entry
+                    even when it holds no such fragments. In this direction the zero
+                    hash requests a range CSNP from the DIS; it does not assert that
+                    the non-DIS has an empty database in the range.
+                </t>
+                <t>
+                    On receiving a valid zero-hash PASH entry from a non-DIS, the DIS
+                    <bcp14>MUST</bcp14> schedule its locally held non-purged fragments in
+                    the range for normal flooding and send a range CSNP covering the
+                    range, even when the range is locally empty. It <bcp14>MUST NOT</bcp14>
+                    return a zero-hash PASH directive in response. The range CSNP
+                    exposes fragments held only by a non-DIS and allows non-DIS systems
+                    to request fragments held only by the DIS through normal PSNP
+                    processing. This is role-directed terminal repair, not another
+                    hash comparison or subdivision step, and does not create directive loops.
+                </t>
+                <t>
+                    Range CSNP coverage, segmentation, and merging follow
+                    <xref target="range-csnp-rules"/>. A range CSNP is processed by all
+                    receiving systems using normal broadcast-circuit CSNP procedures,
+                    including systems that did not participate in the PASH exchange.
                 </t>
             </section>
 
@@ -881,7 +902,9 @@ Hash $6EB348F808C9AE4E
                 When refinement reaches a range that has no matching non-purged fragments in the local
                 database, silence is not sufficient: independently selected range boundaries can prevent
                 the remote node from reaching the same terminal range. The node <bcp14>MUST</bcp14>
-                therefore send a PASH entry for the valid, non-inverted range with its hash set to zero.
+                therefore send a PASH entry for the valid, non-inverted range with its hash set to zero
+                on a point-to-point circuit. Broadcast circuits instead follow the role-directed
+                procedures in <xref target="broadcast-circuits"/>.
             </t>
             <t>
                 A zero hash in a PASH is a terminal repair directive, not a hash mismatch to refine
@@ -894,15 +917,19 @@ Hash $6EB348F808C9AE4E
                 <bcp14>MUST NOT</bcp14> answer the directive only with a PSNP, because that would add a
                 redundant request/response round before the same fragments are flooded. If it holds no
                 such fragments, it performs no further action
-                for that directive, except for the role-directed broadcast response specified in
+                for that directive, except for the role-directed broadcast repair specified in
                 <xref target="broadcast-circuits"/>.
             </t>
             <t>
                 The value zero is reserved and <bcp14>MUST NOT</bcp14> be emitted as the result of any
                 fragment-hash computation or any non-empty range-hash computation. In a valid Node Range
-                Hash Entry, zero means only that the sender has no locally held non-purged fragments in
-                the terminal range and requests direct flooding by the receiver. It does not make an
-                otherwise malformed range valid.
+                Hash Entry, zero is a terminal repair directive, never a computed hash. On a
+                point-to-point circuit, and when sent by the DIS on a broadcast circuit, it
+                indicates that the sender has no locally held non-purged fragments in the
+                terminal range and requests direct flooding by the receiver. When sent by a
+                non-DIS to the DIS, it requests range-CSNP repair as specified in
+                <xref target="broadcast-circuits"/>, regardless of the non-DIS's holdings.
+                It does not make an otherwise malformed range valid.
             </t>
             <t>
                 The all-ones value is reserved and <bcp14>MUST NOT</bcp14> be transmitted.
@@ -924,7 +951,8 @@ Hash $6EB348F808C9AE4E
             <t>
                 An implementation <bcp14>MAY</bcp14> stop refinement when a mismatching range
                 contains sufficiently few locally held fragments, even when the range covers more than
-                one system ID. If it holds none of the fragments in that terminal range, it
+                one system ID. Broadcast circuits follow <xref target="broadcast-circuits"/>.
+                On a point-to-point circuit, if it holds none of the fragments in that terminal range, it
                 <bcp14>MUST</bcp14> send the zero-hash directive specified above. If it holds
                 fragments in the range, it <bcp14>MUST</bcp14> repair the range as specified in
                 <xref target="terminal-repair"/>.
@@ -972,7 +1000,7 @@ Hash $6EB348F808C9AE4E
                 directive specified in <xref target="rules"/>. That directive already makes the
                 neighbor flood everything in the range.
             </t>
-            <t>
+            <t anchor="range-csnp-rules">
                 The following rules apply to range CSNPs:
             </t>
             <ul>
@@ -1120,7 +1148,9 @@ Hash $6EB348F808C9AE4E
             <t>
                 The Merkle hash field is 8 octets containing the 64-bit computed hash of all fragments covered
                 by the range. A computed value <bcp14>MUST NOT</bcp14> be zero. Zero is the terminal
-                direct-flood directive specified in <xref target="rules"/>. The all-ones value is reserved
+                repair directive specified in <xref target="rules"/>, including the
+                role-directed broadcast behavior in <xref target="broadcast-circuits"/>.
+                The all-ones value is reserved
                 and <bcp14>MUST NOT</bcp14> be transmitted.
             </t>
 
