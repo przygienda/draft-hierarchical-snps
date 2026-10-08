@@ -1,0 +1,280 @@
+
+
+
+
+LSR Working Group                                            L. Ginsberg
+Internet-Draft                                             Cisco Systems
+Intended status: Standards Track                           T. Przygienda
+Expires: 4 March 2027                                                HPE
+                                                          31 August 2026
+
+
+                         IS-IS Hello Capability
+                 draft-ginsberg-lsr-hello-capability-00
+
+Abstract
+
+   Advertisement of capabilities in Hellos is useful to allow support of
+   optional features in establishing and maintaining adjacencies.  This
+   document defines a new TLV to be sent in hellos to advertise such
+   capabilities.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 4 March 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+
+
+
+Ginsberg & Przygienda     Expires 4 March 2027                  [Page 1]
+
+Internet-Draft              hello-capability                 August 2026
+
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Requirements Language . . . . . . . . . . . . . . . . . . . .   2
+   3.  Hello Capability Definition . . . . . . . . . . . . . . . . .   2
+   4.  Hello Capability TLV Definition . . . . . . . . . . . . . . .   3
+   5.  New Registries  . . . . . . . . . . . . . . . . . . . . . . .   4
+   6.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   4
+     6.1.  IS-IS Hello Capability TLV  . . . . . . . . . . . . . . .   4
+     6.2.  IS-IS Hello Capability TLV Registries . . . . . . . . . .   4
+   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
+   8.  Normative References  . . . . . . . . . . . . . . . . . . . .   5
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .   5
+
+1.  Introduction
+
+   [RFC7981] defines the Router Capability TLV which is used to
+   advertise capabilites of a router to other routers in an area/domain.
+   This allows routers to advertise information necessary for a given
+   router to participate in optional features in an area/domain.
+
+   There is an analogous need to know what optional features a neighbor
+   supports so as to determine whether those features can be used when
+   establishing/maintaining adjacencies.
+
+   This document defines a new TLV to be sent in Hello PDUs which
+   supports advertisement of optional features.
+
+2.  Requirements Language
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+3.  Hello Capability Definition
+
+   The Hello Capability TLV provides the ability to advertise support
+   for optional capabilities.  The TLV MAY be included in the following
+   PDU types:
+
+      L1-LAN-HELLO-PDU (15)
+
+      L2_LAN-HELLO-PDU (16)
+
+      P2P-HELLO-PDU (17)
+
+
+
+
+Ginsberg & Przygienda     Expires 4 March 2027                  [Page 2]
+
+Internet-Draft              hello-capability                 August 2026
+
+
+   Two classes of information may be advertised in this TLV.
+
+   Support for capabilities which require no additional information are
+   indicated by setting a bit in a variable length bit mask.
+
+   Support for capabilites which require additional information are
+   indicated by advertising a sub-TLV.  Sub-TLVs are included following
+   the variable length bit mask.
+
+4.  Hello Capability TLV Definition
+
+         Type TBA
+         Length: # of octets which follow (1 octet)
+
+         Capability Flags Length (Number of flags + 7) / 8 octets
+         Capability Flags:
+
+             0 1 2 3 4 5 6 7...
+             +--+--+--+--+--+--+--+--+...
+             |c1|c2|                  ...
+             +--+--+--+--+--+--+--+--+...
+
+         Length of optional sub-TLVs (if present) (1 octet)
+
+         Optional sub-TLVs.
+
+         Capability Bits are defined/sent starting with Bit #0.
+         Bit definitions SHOULD be assigned in ascending bit order
+         so as to minimize the number of bits which will need to be
+         transmitted.
+
+         Undefined bits MUST be transmitted as 0 and MUST be
+         ignored on receipt.
+
+         Bits which are NOT transmitted MUST be treated as if they are
+         set to 0 on receipt.
+
+         No capability flags are defined in this document.
+
+         No sub-TLVs are defined in this document.
+
+   Multiple Hello Capability TLVs MAY be advertised in a hello PDU.
+   When multiple Hello Capability TLVs are present in a hello PDU only
+   the bit mask in the first such TLV is considered.
+
+   Subsequent TLVs in the same hello MUST specify a zero length bit
+   mask.  Non-zero length bit masks in other than the first Hello
+   Capability TLV MUST be ignored on receipt.
+
+
+
+Ginsberg & Przygienda     Expires 4 March 2027                  [Page 3]
+
+Internet-Draft              hello-capability                 August 2026
+
+
+   sub-TLVs MAY appear in any Hello Capability TLV.
+
+5.  New Registries
+
+   Two new registries are defined by this document.
+
+   IS-IS Bit Values for the Hello Capabilities TLV is a new registry
+   which defines the bit values advertised in the Capability Flags of
+   the Hello Capability TLV.
+
+   IS-IS Sub-TLVs for the Hello Capabilites TLV is a new registry which
+   defines the sub-TLV types which may be included in a Hello Capabiily
+   TLV
+
+6.  IANA Considerations
+
+6.1.  IS-IS Hello Capability TLV
+
+   This document updates the "IS-IS Top-Level TLV Codepoints" registry
+   as follows:
+
+    +=======+============+=====+=====+=====+=======+====+============+
+    | Value | Name       | IIH | LSP | SNP | Purge | MP | Status/    |
+    |       |            |     |     |     |       |    | Reference  |
+    +=======+============+=====+=====+=====+=======+====+============+
+    | TBA   | Hello      | Y   | N   | N   | N     | Y  | draft-     |
+    |       | Capability |     |     |     |       |    | ginsberg-  |
+    |       |            |     |     |     |       |    | lsr-hello- |
+    |       |            |     |     |     |       |    | capability |
+    +-------+------------+-----+-----+-----+-------+----+------------+
+
+                                 Table 1
+
+6.2.  IS-IS Hello Capability TLV Registries
+
+   This document introduces a new registry for bit values in the new
+   Hello Capability TLV.  The registration policy is Expert Review as
+   defined in [RFC8126].  This registry is part of the "IS-IS TLV
+   Codepoints" registry.  The name of the registry is "IS-IS Bit Values
+   for Hello Capability TLV Flags.  No bit values are currently defined.
+
+   This document introduces a new registry for sub-TLVs in the new Hello
+   Capability TLV.  The registration policy is Expert Review as defined
+   in [RFC8126].  This registry is part of the "IS-IS TLV Codepoints"
+   registry.  The name of the registry is "IS-IS Sub-TLVs for Hello
+   Capability TLV.  No sub-TLVs are currently defined.
+
+
+
+
+
+Ginsberg & Przygienda     Expires 4 March 2027                  [Page 4]
+
+Internet-Draft              hello-capability                 August 2026
+
+
+7.  Security Considerations
+
+   Security concerns for IS-IS are addressed in [RFC5304] and [RFC5310].
+
+   Advertisement of additional capability information may introduce new
+   security concerns.  Discussion of those security concerns is required
+   in the future documents which defines those capabilities.
+
+8.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC5304]  Li, T. and R. Atkinson, "IS-IS Cryptographic
+              Authentication", RFC 5304, DOI 10.17487/RFC5304, October
+              2008, <https://www.rfc-editor.org/info/rfc5304>.
+
+   [RFC5310]  Bhatia, M., Manral, V., Li, T., Atkinson, R., White, R.,
+              and M. Fanto, "IS-IS Generic Cryptographic
+              Authentication", RFC 5310, DOI 10.17487/RFC5310, February
+              2009, <https://www.rfc-editor.org/info/rfc5310>.
+
+   [RFC7981]  Ginsberg, L., Previdi, S., and M. Chen, "IS-IS Extensions
+              for Advertising Router Information", RFC 7981,
+              DOI 10.17487/RFC7981, October 2016,
+              <https://www.rfc-editor.org/info/rfc7981>.
+
+   [RFC8126]  Cotton, M., Leiba, B., and T. Narten, "Guidelines for
+              Writing an IANA Considerations Section in RFCs", BCP 26,
+              RFC 8126, DOI 10.17487/RFC8126, June 2017,
+              <https://www.rfc-editor.org/info/rfc8126>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+Authors' Addresses
+
+   Les Ginsberg
+   Cisco Systems
+   Email: ginsberg@cisco.com
+
+
+   Tony Przygienda
+   HPE
+   Email: antoni.przygienda@hpe.com
+
+
+
+Ginsberg & Przygienda     Expires 4 March 2027                  [Page 5]

@@ -1,0 +1,14 @@
+*.txt
+*.pdf
+*.html
+*.exp.xml
+*.expanded.xml
+*.raw.txt
+*.nl.txt
+*.svg.post
+*.svg.prepost
+.idea/
+proto/
+.github/private-notes.md
+ash-draft.instructions.md
+!draft-ginsberg-lsr-hello-capability-00.txt
